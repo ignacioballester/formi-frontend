@@ -2,26 +2,141 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    /* Base colors */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    /* Primary: Teal */
+    --primary: 173 80% 40%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Secondary: Slate */
+    --secondary: 215 16% 47%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent */
+    --accent: 173 80% 96%;
+    --accent-foreground: 173 80% 30%;
+
+    /* Border & Input */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 173 80% 40%;
+
+    /* Card & Popover */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Border radius */
+    --radius: 0.75rem;
+
+    /* Chart colors */
+    --chart-1: #00b8a9;
+    --chart-2: #3282b8;
+    --chart-3: #f6ae2d;
+    --chart-4: #f26419;
+    --chart-5: #7a4069;
+
+    /* Status colors */
+    --status-active: #00b8a9;
+    --status-inactive: #94a3b8;
+    --status-warning: #f6ae2d;
+    --status-error: #ef4444;
+    --status-info: #3282b8;
+  }
+
+  .dark {
+    /* Base colors */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    /* Primary: Teal */
+    --primary: 173 80% 40%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Secondary: Slate */
+    --secondary: 217 19% 27%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted */
+    --muted: 217 19% 27%;
+    --muted-foreground: 215 20% 65%;
+
+    /* Accent */
+    --accent: 173 80% 20%;
+    --accent-foreground: 173 80% 90%;
+
+    /* Border & Input */
+    --border: 217 19% 27%;
+    --input: 217 19% 27%;
+    --ring: 173 80% 40%;
+
+    /* Card & Popover */
+    --card: 222 47% 13%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 13%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Chart colors - slightly adjusted for dark mode */
+    --chart-1: #00d5c3;
+    --chart-2: #5599d0;
+    --chart-3: #f9c969;
+    --chart-4: #f48b54;
+    --chart-5: #9d5589;
+
+    /* Status colors - slightly adjusted for dark mode */
+    --status-active: #00d5c3;
+    --status-inactive: #94a3b8;
+    --status-warning: #f9c969;
+    --status-error: #f87171;
+    --status-info: #5599d0;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-sans tracking-tight font-bold;
   }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
 }

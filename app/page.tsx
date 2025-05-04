@@ -1,113 +1,311 @@
-import Image from 'next/image';
+"use client"
 
-export default function Home() {
+import { useState, useEffect } from "react"
+import { Building2, Users, UserPlus, ArrowUpRight, Package, GitBranch } from "lucide-react"
+import Link from "next/link"
+
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { getOrganizations, type Organization } from "@/lib/api"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts"
+
+export default function DashboardPage() {
+  const [loading, setLoading] = useState(true)
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true)
+        const orgs = await getOrganizations()
+        setOrganizations(orgs)
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  // Mock data for charts
+  const deploymentData = [
+    { name: "Jan", successful: 65, failed: 12 },
+    { name: "Feb", successful: 59, failed: 8 },
+    { name: "Mar", successful: 80, failed: 10 },
+    { name: "Apr", successful: 81, failed: 5 },
+    { name: "May", successful: 56, failed: 15 },
+    { name: "Jun", successful: 95, failed: 3 },
+    { name: "Jul", successful: 100, failed: 8 },
+  ]
+
+  const moduleStatusData = [
+    { name: "Active", value: 65, color: "var(--status-active)" },
+    { name: "Inactive", value: 15, color: "var(--status-inactive)" },
+    { name: "Warning", value: 10, color: "var(--status-warning)" },
+    { name: "Error", value: 5, color: "var(--status-error)" },
+  ]
+
+  const resourceUsageData = [
+    { name: "Mon", cpu: 30, memory: 45, network: 20 },
+    { name: "Tue", cpu: 40, memory: 50, network: 25 },
+    { name: "Wed", cpu: 45, memory: 55, network: 30 },
+    { name: "Thu", cpu: 50, memory: 60, network: 35 },
+    { name: "Fri", cpu: 55, memory: 65, network: 40 },
+    { name: "Sat", cpu: 35, memory: 40, network: 20 },
+    { name: "Sun", cpu: 25, memory: 30, network: 15 },
+  ]
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <div className="space-y-6">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Enterprise Dashboard</h1>
+          <p className="text-muted-foreground">Welcome back! Here's an overview of your platform.</p>
         </div>
+        <Button asChild>
+          <Link href="/organizations/new">
+            <Building2 className="mr-2 h-4 w-4" />
+            New Organization
+          </Link>
+        </Button>
       </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Organizations</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              <Skeleton className="h-8 w-16" />
+            </div>
+            <p className="text-xs text-muted-foreground">+2 from last month</p>
+          </CardContent>
+          <CardFooter>
+            <Button asChild variant="ghost" size="sm" className="w-full">
+              <Link href="/organizations" className="flex items-center justify-between w-full">
+                <span>View All</span>
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              <Skeleton className="h-8 w-16" />
+            </div>
+            <p className="text-xs text-muted-foreground">+4 from last month</p>
+          </CardContent>
+          <CardFooter>
+            <Button asChild variant="ghost" size="sm" className="w-full">
+              <Link href="/users" className="flex items-center justify-between w-full">
+                <span>Manage Users</span>
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Groups</CardTitle>
+            <UserPlus className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              <Skeleton className="h-8 w-16" />
+            </div>
+            <p className="text-xs text-muted-foreground">+1 from last month</p>
+          </CardContent>
+          <CardFooter>
+            <Button asChild variant="ghost" size="sm" className="w-full">
+              <Link href="/groups" className="flex items-center justify-between w-full">
+                <span>Manage Groups</span>
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Modules</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              <Skeleton className="h-8 w-16" />
+            </div>
+            <p className="text-xs text-muted-foreground">+8 from last month</p>
+          </CardContent>
+          <CardFooter>
+            <Button asChild variant="ghost" size="sm" className="w-full">
+              <Link href="/modules" className="flex items-center justify-between w-full">
+                <span>View Modules</span>
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
+        </TabsList>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            <Card className="lg:col-span-4">
+              <CardHeader>
+                <CardTitle>Deployment Activity</CardTitle>
+                <CardDescription>Successful vs failed deployments over time</CardDescription>
+              </CardHeader>
+              <CardContent className="px-2">
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">Chart temporarily hidden</div>
+              </CardContent>
+            </Card>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore the Next.js 13 playground.
-          </p>
-        </a>
+            <Card className="lg:col-span-3">
+              <CardHeader>
+                <CardTitle>Module Status</CardTitle>
+                <CardDescription>Current status of all modules</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">Chart temporarily hidden</div>
+              </CardContent>
+            </Card>
+          </div>
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  );
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            <Card className="lg:col-span-3">
+              <CardHeader>
+                <CardTitle>Resource Usage</CardTitle>
+                <CardDescription>CPU, Memory and Network usage</CardDescription>
+              </CardHeader>
+              <CardContent className="px-2">
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">Chart temporarily hidden</div>
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-4">
+              <CardHeader>
+                <CardTitle>Recent Organizations</CardTitle>
+                <CardDescription>Your most recently accessed organizations</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-2">
+                    {Array(3)
+                      .fill(0)
+                      .map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                      ))}
+                  </div>
+                ) : organizations.length > 0 ? (
+                  <div className="space-y-2">
+                    {/* --- TEMPORARILY COMMENTED OUT ORGS LIST --- */}
+                    {/* {organizations.slice(0, 5).map((org) => (
+                      <Link
+                        key={org.id}
+                        href={`/organizations/${org.id}`}
+                        className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                            <Building2 className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{org.name}</p>
+                            <p className="text-sm text-muted-foreground">{org.description}</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline">Active</Badge>
+                      </Link>
+                    ))} */}
+                     <div className="h-[100px] flex items-center justify-center text-muted-foreground">Org list temporarily hidden</div>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground">No organizations found</p>
+                )}
+              </CardContent>
+              <CardFooter>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/organizations">View All Organizations</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Advanced Analytics</CardTitle>
+              <CardDescription>Detailed platform analytics and metrics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex h-[400px] items-center justify-center rounded-md border border-dashed">
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <Package className="h-10 w-10 text-muted-foreground" />
+                  <h3 className="text-xl font-medium">Analytics Dashboard</h3>
+                  <p className="max-w-xs text-sm text-muted-foreground">
+                    Advanced analytics features are coming soon. Stay tuned for detailed insights and metrics.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Generated Reports</CardTitle>
+              <CardDescription>Access and download platform reports</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex h-[400px] items-center justify-center rounded-md border border-dashed">
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <GitBranch className="h-10 w-10 text-muted-foreground" />
+                  <h3 className="text-xl font-medium">Reports Dashboard</h3>
+                  <p className="max-w-xs text-sm text-muted-foreground">
+                    Reporting features are coming soon. You'll be able to generate and download custom reports.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
 }
