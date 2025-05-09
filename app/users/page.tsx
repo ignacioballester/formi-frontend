@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { PlusCircle, Search, MoreHorizontal, UserCircle, ExternalLink } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -16,31 +17,51 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getUsers, type User } from "@/lib/iam-api"
+import { getUsers, type IAMUser } from "@/lib/iam"
 
 export default function UsersPage() {
+  const { data: session, status: sessionStatus } = useSession()
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<IAMUser[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   // Keycloak URL - replace with your actual Keycloak URL
   const KEYCLOAK_USERS_URL = "https://keycloak.example.com/admin/users"
 
   useEffect(() => {
     async function fetchUsers() {
+      if (sessionStatus === "loading" || !session?.accessToken) {
+        if (sessionStatus !== "loading") {
+          setLoading(false)
+          setError("Authentication token not available.")
+        }
+        return
+      }
+
       try {
         setLoading(true)
-        const usersData = await getUsers()
+        setError(null)
+        const usersData = await getUsers(session.accessToken)
         setUsers(usersData)
-      } catch (error) {
-        console.error("Error fetching users:", error)
+      } catch (err: any) {
+        console.error("Error fetching users:", err)
+        setError(err.message || "Failed to fetch users.")
+        setUsers([])
       } finally {
         setLoading(false)
       }
     }
 
-    fetchUsers()
-  }, [])
+    if (sessionStatus === "authenticated" && session?.accessToken) {
+      fetchUsers()
+    } else if (sessionStatus === "unauthenticated") {
+      setLoading(false)
+      setError("User is not authenticated.")
+    } else {
+      setLoading(true)
+    }
+  }, [session, sessionStatus])
 
   const filteredUsers = users.filter(
     (user) =>
@@ -53,7 +74,7 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="ml-72 flex-1 space-y-4 p-8 pt-6">
+    <div className="space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Users</h2>
         <div className="flex gap-2">
@@ -80,6 +101,8 @@ export default function UsersPage() {
           />
         </div>
       </div>
+
+      {error && <p className="text-red-500 text-center py-4">Error: {error}</p>}
 
       <div className="rounded-md border">
         <Table>
@@ -114,7 +137,7 @@ export default function UsersPage() {
                     </TableCell>
                   </TableRow>
                 ))
-            ) : filteredUsers.length > 0 ? (
+            ) : !error && filteredUsers.length > 0 ? (
               filteredUsers.map((user) => (
                 <TableRow key={user.username}>
                   <TableCell>
@@ -155,7 +178,7 @@ export default function UsersPage() {
             ) : (
               <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">
-                  No users found.
+                  {error ? "Could not load users." : "No users found."}
                 </TableCell>
               </TableRow>
             )}

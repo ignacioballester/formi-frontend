@@ -16,7 +16,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, login } = useAuth()
   const router = useRouter()
 
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false)
@@ -38,15 +38,19 @@ export function AppShell({ children }: AppShellProps) {
   }, [pathname, isLoading, isAuthenticated]);
 
   useEffect(() => {
-    console.log(`[AppShell Redirect Check] Path: ${pathname}, Loading: ${isLoading}, Authenticated: ${isAuthenticated}, Is Public: ${isPublicRoute}`);
     if (!isLoading && !isAuthenticated && !isPublicRoute) {
-      console.log(`[AppShell Redirecting] User not authenticated on protected route. Redirecting to /login...`);
-      router.replace('/login');
+      console.log(`[AppShell Auth Action] Path: ${pathname}, Not authenticated on protected route. Triggering login.`);
+      login();
     }
-  }, [isLoading, isAuthenticated, isPublicRoute, router, pathname]);
+  }, [isLoading, isAuthenticated, isPublicRoute, login, pathname]);
+
+  if (isLoading) {
+    console.log(`[AppShell Render Block] Path: ${pathname}, Loading: ${isLoading} -> Rendering loading indicator.`);
+    return null;
+  }
 
   if (!isAuthenticated && !isPublicRoute) {
-    console.log(`[AppShell Render Block] Path: ${pathname}, Authenticated: ${isAuthenticated}, Is Public: ${isPublicRoute} -> Rendering null/loader (Unauthenticated on protected route).`);
+    console.log(`[AppShell Render Block] Path: ${pathname}, Authenticated: ${isAuthenticated}, Is Public: ${isPublicRoute} -> Rendering null (Waiting for login redirect).`);
     return null;
   }
 
@@ -74,10 +78,10 @@ function AppShellContent({ children, isMobile }: { children: React.ReactNode; is
         <main
           className={cn(
             "flex-1 overflow-y-auto transition-all duration-300 ease-in-out",
-            sidebarOpen ? "lg:pl-72" : "pl-0",
+            sidebarOpen ? "lg:pl-72" : "lg:pl-20",
           )}
         >
-          <div className="container mx-auto p-4 md:p-6 lg:p-8">{children}</div>
+          <div className="p-4 md:p-6 lg:p-8">{children}</div>
         </main>
       </div>
     </div>

@@ -7,7 +7,6 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getOrganizations, type Organization } from "@/lib/api"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -25,19 +24,28 @@ import {
   Cell,
   Legend,
 } from "recharts"
+import { type Organization } from "@/lib/api"
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true)
-        const orgs = await getOrganizations()
+        setError(null)
+        const response = await fetch('/api/organizations')
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || `Error: ${response.status}`)
+        }
+        const orgs = await response.json()
         setOrganizations(orgs)
-      } catch (error) {
-        console.error("Error fetching data:", error)
+      } catch (err: any) {
+        console.error("Error fetching data:", err)
+        setError(err.message || "Failed to fetch organizations")
       } finally {
         setLoading(false)
       }
@@ -230,6 +238,8 @@ export default function DashboardPage() {
                         <Skeleton key={i} className="h-12 w-full" />
                       ))}
                   </div>
+                ) : error ? (
+                  <p className="text-red-500">{error}</p>
                 ) : organizations.length > 0 ? (
                   <div className="space-y-2">
                     {/* --- TEMPORARILY COMMENTED OUT ORGS LIST --- */}

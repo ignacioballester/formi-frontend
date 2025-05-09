@@ -21,7 +21,6 @@ function AuthContextProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any | null>(null)
   const isLoading = status === "loading"
   const isAuthenticated = !!session?.user
-  const router = useRouter()
 
   useEffect(() => {
     if (session?.user) {
@@ -36,7 +35,8 @@ function AuthContextProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
-    await signOut({ callbackUrl: "/login" })
+    console.log("Initiating logout via next-auth signOut");
+    await signOut({ callbackUrl: "/" });
   }
 
   return (

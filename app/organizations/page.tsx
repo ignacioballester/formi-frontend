@@ -7,7 +7,7 @@ import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getOrganizations, type Organization } from "@/lib/api"
+import { type Organization } from "@/lib/api"
 import { useOrganization } from "@/contexts/organization-context"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -36,10 +36,15 @@ export default function OrganizationsPage() {
     async function fetchOrganizations() {
       try {
         setLoading(true)
-        const orgs = await getOrganizations()
+        const response = await fetch('/api/organizations');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Error fetching organizations: ${response.status}`);
+        }
+        const orgs = await response.json();
         setOrganizations(orgs)
-      } catch (error) {
-        console.error("Error fetching organizations:", error)
+      } catch (error: any) {
+        console.error("Error fetching organizations:", error.message ? error.message : error)
       } finally {
         setLoading(false)
       }

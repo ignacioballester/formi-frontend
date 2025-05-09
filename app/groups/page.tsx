@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { PlusCircle, Search, MoreHorizontal, Users, ExternalLink } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -16,31 +17,51 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getGroups, type Group } from "@/lib/iam-api"
+import { getGroups, type IAMGroup } from "@/lib/iam"
 
 export default function GroupsPage() {
+  const { data: session, status: sessionStatus } = useSession()
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
-  const [groups, setGroups] = useState<Group[]>([])
+  const [groups, setGroups] = useState<IAMGroup[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   // Keycloak URL - replace with your actual Keycloak URL
   const KEYCLOAK_GROUPS_URL = "https://keycloak.example.com/admin/groups"
 
   useEffect(() => {
     async function fetchGroups() {
+      if (sessionStatus === "loading" || !session?.accessToken) {
+        if (sessionStatus !== "loading") {
+          setLoading(false)
+          setError("Authentication token not available.")
+        }
+        return
+      }
+
       try {
         setLoading(true)
-        const groupsData = await getGroups()
+        setError(null)
+        const groupsData = await getGroups(session.accessToken)
         setGroups(groupsData)
-      } catch (error) {
-        console.error("Error fetching groups:", error)
+      } catch (err: any) {
+        console.error("Error fetching groups:", err)
+        setError(err.message || "Failed to fetch groups.")
+        setGroups([])
       } finally {
         setLoading(false)
       }
     }
 
-    fetchGroups()
-  }, [])
+    if (sessionStatus === "authenticated" && session?.accessToken) {
+      fetchGroups()
+    } else if (sessionStatus === "unauthenticated") {
+      setLoading(false)
+      setError("User is not authenticated.")
+    } else {
+      setLoading(true)
+    }
+  }, [session, sessionStatus])
 
   const filteredGroups = groups.filter((group) => group.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
@@ -49,7 +70,7 @@ export default function GroupsPage() {
   }
 
   return (
-    <div className="ml-72 flex-1 space-y-4 p-8 pt-6">
+    <div className="space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Groups</h2>
         <div className="flex gap-2">
@@ -76,6 +97,8 @@ export default function GroupsPage() {
           />
         </div>
       </div>
+
+      {error && <p className="text-red-500 text-center py-4">Error: {error}</p>}
 
       <div className="rounded-md border">
         <Table>
@@ -110,7 +133,7 @@ export default function GroupsPage() {
                     </TableCell>
                   </TableRow>
                 ))
-            ) : filteredGroups.length > 0 ? (
+            ) : !error && filteredGroups.length > 0 ? (
               filteredGroups.map((group) => (
                 <TableRow key={group.id}>
                   <TableCell>
@@ -150,7 +173,7 @@ export default function GroupsPage() {
             ) : (
               <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">
-                  No groups found.
+                  {error ? "Could not load groups." : "No groups found."}
                 </TableCell>
               </TableRow>
             )}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useSidebar } from "@/components/ui/sidebar"
+import { usePermission } from "@/hooks/usePermission"
 
 interface SidebarProps {}
 
@@ -45,12 +46,23 @@ export function Sidebar({}: SidebarProps) {
   const { user, logout } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const { open, toggleSidebar, isMobile, setOpen } = useSidebar()
+  
+  // Memoize the scopes array
+  const enterpriseSettingsScopes = useMemo(() => ["update_enterprise"], [])
+
+  const { 
+    hasPermission: canAccessEnterpriseSettings, 
+    isLoading: isLoadingEnterpriseSettingsAccess 
+  } = usePermission({
+    resourceName: "enterprise-1",
+    scopes: enterpriseSettingsScopes, // Use the memoized array
+  })
 
   // Skip rendering sidebar on login page
   if (pathname === "/login") return null
 
   // Enterprise-level routes
-  const enterpriseRoutes = [
+  let enterpriseRoutes = [
     {
       title: "Dashboard",
       icon: BarChart3,
@@ -71,12 +83,16 @@ export function Sidebar({}: SidebarProps) {
       icon: UserPlus,
       href: "/groups",
     },
-    {
+  ]
+
+  // Add Settings link conditionally based on permission
+  if (!isLoadingEnterpriseSettingsAccess && canAccessEnterpriseSettings) {
+    enterpriseRoutes.push({
       title: "Settings",
       icon: Settings,
       href: "/settings",
-    },
-  ]
+    })
+  }
 
   // Organization-specific routes
   const organizationRoutes = selectedOrganization
