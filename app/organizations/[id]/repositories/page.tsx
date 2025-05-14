@@ -1,126 +1,166 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import { GitBranch, PlusCircle, ExternalLink } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { useParams, useRouter } from "next/navigation"
+import { GitBranch, PlusCircle, ExternalLink, MoreHorizontal, Search, ArrowUpDown, ChevronDown, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { getRepositories, getOrganization, type Repository, type Organization } from "@/lib/api"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getRepositories, getOrganization, type Repository, type Organization, type Project, getProjects } from "@/lib/api"
 import { useOrganization } from "@/contexts/organization-context"
+import { toast } from "@/components/ui/use-toast"
+import { deleteRepositoryAction } from "@/app/actions/repositories/actions"
+import { RepositoriesOverview } from "@/components/repositories/repositories-overview"
 
 export default function OrganizationRepositoriesPage() {
-  const { id } = useParams<{ id: string }>()
-  const { setSelectedOrganization } = useOrganization()
-  const [loading, setLoading] = useState(true)
+  const params = useParams<{ id: string }>()
+  const router = useRouter()
+  const { data: session, status: sessionStatus } = useSession()
+  const { selectedOrganization: contextOrg, setSelectedOrganization: setContextSelectedOrg } = useOrganization()
+
+  const organizationId = params.id
+
   const [repositories, setRepositories] = useState<Repository[]>([])
-  const [organization, setOrganization] = useState<Organization | null>(null)
+  const [projectsInOrg, setProjectsInOrg] = useState<Project[]>([])
+  const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(contextOrg)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const getClientToken = useCallback(async () => {
+    if (!session?.accessToken) {
+      toast({ title: "Authentication Error", description: "Access token not available.", variant: "destructive" })
+      throw new Error("Access token not available")
+    }
+    return session.accessToken
+  }, [session])
 
   useEffect(() => {
+    // Clear previous data when organizationId changes to prevent flicker of old data
+    setRepositories([]);
+    setProjectsInOrg([]);
+    // We might want to set currentOrganization to null too, 
+    // but contextOrg and subsequent fetch should handle it.
+    // However, for a cleaner loading state, it can be beneficial.
+    // setCurrentOrganization(null); 
+
     async function fetchData() {
+      if (!organizationId || sessionStatus !== "authenticated") {
+        if (sessionStatus === "loading") return
+        setLoading(false)
+        setError(sessionStatus !== "authenticated" ? "User not authenticated." : "Organization ID missing.")
+        return
+      }
+
+      setLoading(true)
+      setError(null)
       try {
-        setLoading(true)
-        const orgId = Number.parseInt(id as string)
+        const token = await getClientToken()
+        const numericOrgId = Number(organizationId)
 
-        // Fetch organization details
-        const org = await getOrganization(orgId)
-        setOrganization(org)
-        setSelectedOrganization(org)
-
+        // Fetch organization if not in context or if IDs don't match
+        if (!contextOrg || contextOrg.id.toString() !== organizationId) {
+          const orgData = await getOrganization(numericOrgId, async () => token)
+          setCurrentOrganization(orgData)
+          setContextSelectedOrg(orgData)
+        } else {
+          setCurrentOrganization(contextOrg)
+        }
+        
         // Fetch repositories for this organization
-        const reposData = await getRepositories({ organization_id: orgId })
-        setRepositories(reposData)
-      } catch (error) {
-        console.error("Error fetching data:", error)
+        const repos = await getRepositories({ organization_id: numericOrgId }, async () => token)
+        setRepositories(repos)
+
+        // Fetch all projects in this organization
+        const orgProjects = await getProjects(numericOrgId, async () => token);
+        setProjectsInOrg(orgProjects);
+
+      } catch (err: any) {
+        console.error("Error fetching data:", err)
+        setError(err.message || "An unexpected error occurred.")
+        toast({ title: "Error Loading Page Data", description: err.message, variant: "destructive" })
       } finally {
         setLoading(false)
       }
     }
+    if (sessionStatus === "unauthenticated") router.push("/login")
+    else fetchData()
+  }, [organizationId, sessionStatus, getClientToken, router, contextOrg, setContextSelectedOrg])
 
-    fetchData()
-  }, [id, setSelectedOrganization])
+  if (loading || sessionStatus === "loading") {
+    return (
+      <div className="space-y-6 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-10 w-10" />
+            <div><Skeleton className="h-8 w-48" /></div>
+          </div>
+          <Skeleton className="h-10 w-[280px]" />
+        </div>
+        <Skeleton className="h-[300px] w-full" />
+      </div>
+    )
+  }
 
-  return (
-    <div className="ml-72 flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Repositories</h2>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Repository
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full min-h-[calc(100vh-100px)] p-4">
+        <p className="text-lg text-destructive text-center mb-4">{error}</p>
+        <Button onClick={() => router.back()} variant="outline">Go Back</Button>
+      </div>
+    )
+  }
+  
+  if (!currentOrganization) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full min-h-[calc(100vh-100px)] p-4">
+        <p className="text-lg text-muted-foreground">Organization data not found.</p>
+        <Button asChild variant="outline" className="mt-4">
+          <Link href={`/organizations`}>Back to Organizations</Link>
         </Button>
       </div>
+    )
+  }
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {loading ? (
-          Array(3)
-            .fill(0)
-            .map((_, i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-4 w-full" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-20 w-full" />
-                </CardContent>
-                <CardFooter>
-                  <Skeleton className="h-10 w-full" />
-                </CardFooter>
-              </Card>
-            ))
-        ) : repositories.length > 0 ? (
-          repositories.map((repo) => (
-            <Card key={repo.id}>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <GitBranch className="mr-2 h-5 w-5" />
-                  {repo.name}
-                </CardTitle>
-                <CardDescription>ID: {repo.id}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center text-sm">
-                  <ExternalLink className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <a
-                    href={repo.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline"
-                  >
-                    {repo.url}
-                  </a>
-                </div>
-                <div>
-                  <Badge variant={repo.status.connection_successful ? "default" : "destructive"}>
-                    {repo.status.connection_successful ? "Connected" : "Connection Failed"}
-                  </Badge>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button asChild className="w-full">
-                  <Link href={`/organizations/${id}/repositories/${repo.id}`}>View Details</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))
-        ) : (
-          <Card className="col-span-full">
-            <CardHeader>
-              <CardTitle>No Repositories Found</CardTitle>
-              <CardDescription>No repositories found for this organization.</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button className="w-full">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Repository
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
+  return (
+    <div className="space-y-6 p-4 md:p-8 pt-6">
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" size="icon" asChild>
+          <Link href={`/organizations/${currentOrganization.id}`}>
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Repositories in {currentOrganization.name}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            View and manage repositories for this organization.
+          </p>
+        </div>
       </div>
+      <RepositoriesOverview 
+        repositories={repositories} 
+        organizationId={currentOrganization.id.toString()} 
+        projectsInOrg={projectsInOrg}
+        isLoading={loading}
+        pageTitle={`Repositories in ${currentOrganization.name}`}
+        pageDescription={`Manage repositories for ${currentOrganization.name}.`}
+      />
     </div>
   )
 }

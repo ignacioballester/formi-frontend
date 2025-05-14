@@ -38,22 +38,44 @@ export default function OrganizationDetailPage() {
         const orgId = Number.parseInt(id as string)
 
         // Fetch organization details
-        const org = await getOrganization(orgId)
+        const orgResponse = await fetch(`/api/organizations/${orgId}`);
+        if (!orgResponse.ok) {
+          const errorData = await orgResponse.json().catch(() => ({ message: "Failed to fetch organization" }));
+          throw new Error(errorData.message || `HTTP error! status: ${orgResponse.status}`);
+        }
+        const org = await orgResponse.json();
+
         setOrganization(org)
         setSelectedOrganization(org)
 
         // Fetch projects for this organization
-        const projectsData = await getProjects(orgId)
+        const projectsResponse = await fetch(`/api/organizations/${orgId}/projects`);
+        if (!projectsResponse.ok) {
+          const errorData = await projectsResponse.json().catch(() => ({ message: "Failed to fetch projects"}));
+          throw new Error(errorData.message || `HTTP error! status: ${projectsResponse.status}`);
+        }
+        const projectsData = await projectsResponse.json();
         setProjects(projectsData)
 
         // Fetch modules for this organization
-        const modulesData = await getModules({ organization_id: orgId })
+        const modulesResponse = await fetch(`/api/organizations/${orgId}/modules`);
+        if (!modulesResponse.ok) {
+          const errorData = await modulesResponse.json().catch(() => ({ message: "Failed to fetch modules"}));
+          throw new Error(errorData.message || `HTTP error! status: ${modulesResponse.status}`);
+        }
+        const modulesData = await modulesResponse.json();
         setModules(modulesData)
 
         // Fetch deployments for each project
         const allDeployments: Deployment[] = []
         for (const project of projectsData) {
-          const projectDeployments = await getDeployments(project.id)
+          const deploymentsResponse = await fetch(`/api/projects/${project.id}/deployments`);
+          if (!deploymentsResponse.ok) {
+            const errorData = await deploymentsResponse.json().catch(() => ({ message: `Failed to fetch deployments for project ${project.id}`}));
+            console.error(`Error fetching deployments for project ${project.id}: ${errorData.message || deploymentsResponse.status}`);
+            continue;
+          }
+          const projectDeployments = await deploymentsResponse.json();
           allDeployments.push(...projectDeployments)
         }
         setDeployments(allDeployments)
@@ -116,7 +138,7 @@ export default function OrganizationDetailPage() {
 
   if (loading) {
     return (
-      <div className="ml-72 flex-1 space-y-4 p-8 pt-6">
+      <div className="space-y-4 p-8 pt-6">
         <Skeleton className="h-10 w-1/4" />
         <Skeleton className="h-6 w-1/3" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -131,7 +153,7 @@ export default function OrganizationDetailPage() {
   }
 
   return (
-    <div className="ml-72 flex-1 space-y-6 p-8 pt-6">
+    <div className="space-y-6 p-8 pt-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">{organization?.name}</h2>
         <p className="text-muted-foreground">{organization?.description}</p>

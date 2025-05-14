@@ -140,6 +140,7 @@ async function fetchIAMAPI<T>(
     options: RequestInit = {}, 
     tokenOrProvider?: string | GetTokenFn
 ): Promise<T> {
+    console.log(`[fetchIAMAPI] Called for endpoint: ${endpoint}. tokenOrProvider type: ${typeof tokenOrProvider}, value (partial/presence): ${typeof tokenOrProvider === 'string' ? (tokenOrProvider as string).substring(0,10)+'...' : !!tokenOrProvider}`);
     if (typeof tokenOrProvider === 'string') {
         // If a direct token string is provided, call internal fetch directly.
         // No retry-on-expiry logic here as we don't have a mechanism to refresh a static token.

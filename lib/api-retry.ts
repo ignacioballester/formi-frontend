@@ -68,9 +68,10 @@ export async function executeWithRetryOnTokenExpiry<T>(
     const isExpiredError2 = ExpiredTokenErrorClass2 && error instanceof ExpiredTokenErrorClass2;
 
     if (isExpiredError1 || isExpiredError2) {
-      console.warn(`[executeWithRetryOnTokenExpiry] Token expired error caught (Name: "${error.name}", Message: "${error.message}"). Attempting token refresh and retry.`);
+      console.warn(`[executeWithRetryOnTokenExpiry] Token expired error caught (Name: "${error.name}", Message: "${error.message}"). Initial token (first 40 chars): ${initialToken?.substring(0,40)}. Attempting token refresh and retry.`);
 
       const newToken = await getTokenFn(); // Attempt to get a (potentially) refreshed token
+      console.log(`[executeWithRetryOnTokenExpiry] New token after refresh attempt (first 40 chars): ${newToken?.substring(0,40)}`);
 
       if (!newToken) {
         console.error("[executeWithRetryOnTokenExpiry] Failed to obtain a token after refresh attempt (getTokenFn returned null/undefined).");

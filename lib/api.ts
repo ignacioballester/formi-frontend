@@ -16,6 +16,7 @@ import {
 // Helper function for API requests (internal, expects token)
 export async function fetchAPIInternal<T>(token: string | undefined, endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${FORMI_API_BASE_URL}${endpoint}`
+  console.log("[DEBUG] Making API call to URL:", url);
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -150,6 +151,14 @@ export interface Project {
   organization_id: number
 }
 
+// --- Add GitReference interface (from bundled.yaml) ---
+export interface GitReference {
+  tag?: string;
+  commit?: string;
+  branch?: string;
+}
+// --- End GitReference interface ---
+
 export interface Module {
   id: number
   name: string
@@ -157,11 +166,7 @@ export interface Module {
   project_id?: number
   organization_id: number
   working_directory: string
-  git_reference: {
-    tag?: string
-    commit?: string
-    branch?: string
-  }
+  git_reference: GitReference
   terraform_properties: {
     module: any
     tfvars_json_schema: any
@@ -173,6 +178,69 @@ export interface Module {
     terraform_valid: boolean
   }
 }
+
+// --- Add CreateModuleInput interface (from bundled.yaml) ---
+export interface CreateModuleInput {
+  name: string;
+  repository_id: number;
+  working_directory: string;
+  organization_id: number;
+  project_id?: number; // Optional
+  git_reference: GitReference;
+}
+// --- End CreateModuleInput interface ---
+
+// --- Add UpdateModuleInput interface (from bundled.yaml, simplified) ---
+export interface UpdateModuleInput {
+  name?: string;
+  module_config?: ModuleConfig; // Updated to use ModuleConfig
+  // As per spec, git_reference and working_directory are not in UpdateModuleInput
+}
+// --- End UpdateModuleInput interface ---
+
+// --- START: ModuleConfig and related interfaces (from bundled.yaml) ---
+export interface VariableConfiguration {
+  options?: any[]; // Replace 'any' with a more specific type if available
+  only_options_available?: boolean;
+}
+
+export interface ReviewRequirement {
+  when: string;
+  by: string[];
+}
+
+export interface ModuleCredentialConfiguration {
+  type: string;
+  options?: SecretIdentifier[];
+  project_credentials_allowed?: boolean;
+}
+
+export interface EnvironmentVariable {
+  name: string;
+  input: string;
+}
+
+export interface DeploymentVariable {
+  name: string;
+  default?: any; // Replace 'any' with a more specific type if available
+  description?: string;
+}
+
+export interface ExternalModule {
+  module_name: string;
+  variable_name: string;
+}
+
+export interface ModuleConfig {
+  config_file_path?: string;
+  variables?: Record<string, VariableConfiguration>; // Based on additionalProperties
+  review_required?: ReviewRequirement[];
+  credentials?: ModuleCredentialConfiguration[];
+  environment_variables?: EnvironmentVariable[];
+  deployment_variables?: DeploymentVariable[];
+  external_modules?: ExternalModule[];
+}
+// --- END: ModuleConfig and related interfaces ---
 
 export interface Deployment {
   id: number
@@ -204,6 +272,36 @@ export interface CreateOrganizationInput {
   description: string;
 }
 
+// Based on #/components/schemas/SecretIdentifier from bundled.yaml
+export interface SecretIdentifier {
+  name: string;
+  organization_id: number;
+  project_id?: number; // Optional
+  type: string;
+}
+
+export interface CreateProjectInput {
+  name: string;
+  organization_id: number;
+}
+
+// Input type for creating a repository, based on #/components/schemas/CreateRepositoryInput from bundled.yaml
+export interface CreateRepositoryInput {
+  name: string;
+  url: string;
+  organization_id: number;
+  project_id?: number; // Optional
+  secret: SecretIdentifier; // Changed from secret_name to secret object
+}
+
+// --- Add UpdateRepositoryInput interface ---
+export interface UpdateRepositoryInput {
+  name?: string;
+  url?: string;
+  secret?: SecretIdentifier; // Allow updating the secret
+}
+// --- End of UpdateRepositoryInput interface ---
+
 // Organizations
 export const getOrganizations = (customGetTokenFn?: GetTokenFn) => fetchAPI<Organization[]>("/orgs", {}, customGetTokenFn);
 export const getOrganization = (id: number, customGetTokenFn?: GetTokenFn) => fetchAPI<Organization>(`/orgs/${id}`, {}, customGetTokenFn);
@@ -219,26 +317,135 @@ export const createOrganization = (data: CreateOrganizationInput, customGetToken
 export const getProjects = (organizationId: number, customGetTokenFn?: GetTokenFn) => fetchAPI<Project[]>(`/organizations/${organizationId}/projects`, {}, customGetTokenFn);
 export const getProject = (id: number, customGetTokenFn?: GetTokenFn) => fetchAPI<Project>(`/projects/${id}`, {}, customGetTokenFn);
 
+export const createProject = (data: CreateProjectInput, customGetTokenFn?: GetTokenFn) => 
+  fetchAPI<Project>("/projects", {
+    method: "POST",
+    body: JSON.stringify(data),
+  }, customGetTokenFn);
+
 // Modules
 export const getModules = (params?: { project_id?: number; organization_id?: number }, customGetTokenFn?: GetTokenFn) => {
   const queryParams = new URLSearchParams()
   if (params?.project_id) queryParams.append("project_id", params.project_id.toString())
   if (params?.organization_id) queryParams.append("organization_id", params.organization_id.toString())
 
-  return fetchAPI<Module[]>("/modules", {}, customGetTokenFn)
+  return fetchAPI<Module[]>(`/modules${queryParams.toString() ? `?${queryParams.toString()}` : ''}`, {}, customGetTokenFn);
 }
 export const getModule = (id: number, customGetTokenFn?: GetTokenFn) => fetchAPI<Module>(`/modules/${id}`, {}, customGetTokenFn)
+
+// --- Add createModule function ---
+export const createModule = (data: CreateModuleInput, customGetTokenFn?: GetTokenFn) =>
+  fetchAPI<Module>("/modules", { // Assuming POST to /modules endpoint
+    method: "POST",
+    body: JSON.stringify(data),
+  }, customGetTokenFn);
+// --- End createModule function ---
+
+// --- Add updateModule function ---
+export const updateModule = (id: number, data: UpdateModuleInput, customGetTokenFn?: GetTokenFn) =>
+  fetchAPI<Module>(`/modules/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  }, customGetTokenFn);
+// --- End updateModule function ---
+
+// --- Add deleteModule function ---
+export const deleteModule = (id: number, customGetTokenFn?: GetTokenFn) =>
+  fetchAPI<void>(`/modules/${id}`, { // Expecting 204 No Content
+    method: "DELETE",
+  }, customGetTokenFn);
+// --- End deleteModule function ---
+
+// --- Add DeploymentInputs and DeployModuleInput interfaces ---
+// Based on #/components/schemas/DeploymentVariableInput
+export interface DeploymentVariableInput {
+  name: string;
+  input: string; // Value of the variable
+}
+
+// Based on #/components/schemas/DeploymentInputs
+export interface DeploymentInputs {
+  tf_vars: { [key: string]: any }; // Terraform variables as a JSON object
+  secrets?: SecretIdentifier[]; // Array of secret identifiers, assuming SecretIdentifier is defined elsewhere
+  deployment_variable_inputs?: DeploymentVariableInput[];
+}
+
+// Based on #/components/schemas/DeployModuleInput
+export interface DeployModuleInput {
+  module_id: number;
+  project_id: number;
+  inputs: DeploymentInputs;
+}
+
+// Response type for deployModule, based on API spec
+export interface DeployModuleResponse {
+  deployment: Deployment;
+  run: Run; // Assuming Run interface is defined or will be defined
+}
+
+// Define Run interface if not already present (based on API spec)
+export interface Run {
+    id: number;
+    status: string;
+    error_message: string;
+}
+// --- End DeploymentInputs and DeployModuleInput interfaces ---
 
 // Deployments
 export const getDeployments = (projectId: number, deploymentId?: number, customGetTokenFn?: GetTokenFn) => {
   const queryParams = new URLSearchParams()
-  queryParams.append("project_id", projectId.toString())
-  if (deploymentId) queryParams.append("id", deploymentId.toString())
+  // Add a check for valid projectId
+  if (typeof projectId === 'number' && !isNaN(projectId)) {
+    queryParams.append("project_id", projectId.toString())
+  } else {
+    // This case should ideally be caught before calling getDeployments,
+    // but as a safeguard, we can log an error or throw.
+    // For now, if projectId is invalid, the API call will likely fail as the backend requires it.
+    // The backend error "project_id is required" would then be the indicator.
+    // Alternatively, throw an error here:
+    // throw new Error("Invalid projectId provided to getDeployments");
+    console.error("Invalid or missing projectId in getDeployments call. API request will likely fail.");
+  }
 
-  return fetchAPI<Deployment[]>("/deployments", {}, customGetTokenFn)
+  if (deploymentId && typeof deploymentId === 'number' && !isNaN(deploymentId)) { 
+    queryParams.append("id", deploymentId.toString())
+  }
+
+  const queryString = queryParams.toString();
+  return fetchAPI<Deployment[]>(`/deployments${queryString ? `?${queryString}` : ''}`, {}, customGetTokenFn);
 }
+
+// --- START: Add UpdateDeploymentInput ---
+// Define what can be updated. For now, let's assume only tf_vars.
+// The API might support updating secrets or deployment_variables too.
+export interface UpdateDeploymentInput {
+  inputs: {
+    tf_vars: { [key: string]: any };
+    // Potentially add secrets and deployment_variable_inputs if API supports updating them
+  };
+}
+// --- END: Add UpdateDeploymentInput ---
+
+// TODO: Review if fetching by version is always needed, or if fetching by ID gets the latest.
+// The current implementation requires a version.
 export const getDeployment = (id: number, version: number, customGetTokenFn?: GetTokenFn) =>
   fetchAPI<Deployment>(`/deployments/${id}?version=${version}`, {}, customGetTokenFn)
+
+// --- START: Add updateDeployment function ---
+export const updateDeployment = (id: number, data: UpdateDeploymentInput, customGetTokenFn?: GetTokenFn) =>
+  fetchAPI<Deployment>(`/deployments/${id}`, { // Assuming PUT to /deployments/{id}
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }, customGetTokenFn);
+// --- END: Add updateDeployment function ---
+
+// --- Add deployModule function ---
+export const deployModule = (data: DeployModuleInput, customGetTokenFn?: GetTokenFn) =>
+  fetchAPI<DeployModuleResponse>("/deployments", {
+    method: "POST",
+    body: JSON.stringify(data),
+  }, customGetTokenFn);
+// --- End deployModule function ---
 
 // Repositories
 export const getRepositories = (params?: { project_id?: number; organization_id?: number }, customGetTokenFn?: GetTokenFn) => {
@@ -246,7 +453,201 @@ export const getRepositories = (params?: { project_id?: number; organization_id?
   if (params?.project_id) queryParams.append("project_id", params.project_id.toString())
   if (params?.organization_id) queryParams.append("organization_id", params.organization_id.toString())
 
-  return fetchAPI<Repository[]>("/repositories", {}, customGetTokenFn)
+  return fetchAPI<Repository[]>(`/repositories${queryParams.toString() ? `?${queryParams.toString()}` : ''}`, {}, customGetTokenFn)
 }
 export const getRepository = (id: number, customGetTokenFn?: GetTokenFn) =>
-  fetchAPI<{ repository: Repository; references: any[] }>(`/repositories/${id}`, {}, customGetTokenFn)
+  fetchAPI<{ repository: Repository; references: GitReference[] }>(`/repositories/${id}`, {}, customGetTokenFn); // Updated 'any[]' to 'GitReference[]'
+
+// Repositories - Add createRepository function
+export const createRepository = (data: CreateRepositoryInput, customGetTokenFn?: GetTokenFn) =>
+  fetchAPI<Repository>(`/repositories`, { // Using /repositories as the endpoint, organization_id is in the body
+    method: "POST",
+    body: JSON.stringify(data),
+  }, customGetTokenFn);
+
+// Add deleteRepository function
+export const deleteRepository = (id: number, customGetTokenFn?: GetTokenFn) =>
+  fetchAPI<void>(`/repositories/${id}`, { // Expecting a 204 No Content on successful deletion
+    method: "DELETE",
+  }, customGetTokenFn);
+
+// --- Add updateRepository function ---
+export const updateRepository = (id: number, data: UpdateRepositoryInput, customGetTokenFn?: GetTokenFn) =>
+  fetchAPI<Repository>(`/repositories/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  }, customGetTokenFn);
+// --- End of updateRepository function ---
+
+// Secret Management API Types and Functions
+// These types are kept as they are used by app/actions/secrets/actions.ts
+
+export interface SecretData { 
+  [key: string]: any; 
+}
+
+// Based on #/components/schemas/SecretCreate from secret_management/api/rest/openapi.yaml
+export interface SecretCreate {
+  name: string;
+  display_name?: string;
+  type: string;
+  description?: string;
+  organization_id: number;
+  project_id?: number; 
+  data: SecretData;
+}
+
+// Based on #/components/schemas/SecretUpdate from secret_management/api/rest/openapi.yaml
+export interface SecretUpdate {
+  display_name?: string;
+  description?: string;
+  type: string; // Type is required as per openapi.yaml for PUT body
+  data?: SecretData; 
+}
+
+// Based on #/components/schemas/SecretResponse from secret_management/api/rest/openapi.yaml
+export interface SecretResponse {
+  name: string;
+  display_name?: string;
+  type: string;
+  description?: string;
+  organization_id: number;
+  project_id: number; // REQUIRED by spec in some contexts, actions handle optionality
+  data?: SecretData; // Included if include_private=true (for getSecret)
+}
+
+// New types for dynamic secret type definitions
+export interface DataAttribute {
+  Name: string;
+  Type: "string" | "number" | "boolean"; // Add other types if necessary
+  Private: boolean;
+  Required: boolean;
+  DisplayName?: string; // Optional: For a more user-friendly label
+  Description?: string; // Optional: For a hint or tooltip
+}
+
+export interface SecretTypeDefinition {
+  Name: string;
+  DisplayName: string;
+  Description: string;
+  DataAttributes: DataAttribute[];
+}
+
+// Functions listSecrets, createSecret, getSecret, updateSecret, deleteSecret 
+// are removed as they are now handled by server actions in app/actions/secrets/actions.ts
+
+// Runner API Types (based on openapi.yaml)
+export type RunnerRunStatus = "pending" | "claimed" | "running" | "completed" | "failed";
+
+export interface RunnerStatusDetails {
+  error_message?: string | null;
+  waiting_for_current_run?: number | null;
+  approval_needed_from?: string[] | null;
+}
+
+export interface RunnerRunProperties {
+  run_by: string;
+  deployment_version: number;
+  terraform_command: string;
+}
+
+export interface RunnerRun {
+  id: number;
+  deployment_id: number;
+  status: RunnerRunStatus;
+  status_details?: RunnerStatusDetails | null;
+  properties: RunnerRunProperties;
+  timestamp: string; // Should be parsed as ISO 8601 date string
+}
+
+const RUNNER_API_BASE_URL = "http://localhost:8084";
+
+export async function getRunnerRuns(
+  getClientToken: () => Promise<string> // Token might not be strictly needed if runner API is not auth-protected
+): Promise<RunnerRun[]> {
+  // const token = await getClientToken(); // Uncomment if runner API requires auth
+  try {
+    const response = await fetch(`${RUNNER_API_BASE_URL}/runs`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // 'Authorization': `Bearer ${token}`, // Uncomment if runner API requires auth
+      },
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("Runner API Error fetching runs:", response.status, errorBody);
+      throw new Error(`Failed to fetch runs: ${response.status} ${errorBody || response.statusText}`);
+    }
+    const runs = await response.json();
+    return runs as RunnerRun[];
+  } catch (error) {
+    console.error("Error in getRunnerRuns:", error);
+    throw error; // Re-throw to be caught by the caller
+  }
+}
+
+export async function getRunnerRunById(
+  runId: number,
+  getClientToken: () => Promise<string> // Token might not be strictly needed
+): Promise<RunnerRun> {
+  // const token = await getClientToken(); // Uncomment if auth is needed
+  try {
+    const response = await fetch(`${RUNNER_API_BASE_URL}/runs/${runId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // 'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`Runner API Error fetching run ${runId}:`, response.status, errorBody);
+      throw new Error(`Failed to fetch run ${runId}: ${response.status} ${errorBody || response.statusText}`);
+    }
+    const run = await response.json();
+    return run as RunnerRun;
+  } catch (error) {
+    console.error(`Error in getRunnerRunById for run ${runId}:`, error);
+    throw error;
+  }
+}
+
+export async function getRunLogs(
+  runId: number,
+  getClientToken: () => Promise<string> // Token might not be strictly needed
+): Promise<string> {
+  // const token = await getClientToken(); // Uncomment if auth is needed
+  try {
+    const response = await fetch(`${RUNNER_API_BASE_URL}/runs/${runId}/logs`, {
+      method: 'GET',
+      headers: {
+        // 'Authorization': `Bearer ${token}`,
+        // For plain text, Content-Type on request might not be needed, but Accept could be useful
+        'Accept': 'text/plain',
+      },
+    });
+    if (!response.ok) {
+      // Try to parse error as JSON if possible, otherwise use text
+      let errorDetail = `Failed to fetch logs for run ${runId}: ${response.status} ${response.statusText}`;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            const errorJson = await response.json();
+            errorDetail = errorJson.message || errorJson.error || `Runner API Error: ${JSON.stringify(errorJson)}`;
+        } else {
+            const errorText = await response.text();
+            errorDetail = `Runner API Error: ${errorText.substring(0,500)}`;
+        }
+      } catch(e){ /* ignore failed parsing of error body */ }
+      console.error(`Runner API Error fetching logs for run ${runId}:`, response.status, errorDetail);
+      throw new Error(errorDetail);
+    }
+    const logs = await response.text();
+    return logs;
+  } catch (error) {
+    console.error(`Error in getRunLogs for run ${runId}:`, error);
+    throw error;
+  }
+}

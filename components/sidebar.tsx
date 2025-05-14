@@ -16,6 +16,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  FolderKanban,
+  Briefcase,
+  ListChecks,
+  FileOutput,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -42,7 +46,7 @@ interface SidebarProps {}
 export function Sidebar({}: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { selectedOrganization, setSelectedOrganization, isOrganizationView } = useOrganization()
+  const { selectedOrganization, setSelectedOrganization, isOrganizationView, selectedProject, setSelectedProject, isProjectView } = useOrganization()
   const { user, logout } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const { open, toggleSidebar, isMobile, setOpen } = useSidebar()
@@ -72,6 +76,11 @@ export function Sidebar({}: SidebarProps) {
       title: "Organizations",
       icon: Building2,
       href: "/organizations",
+    },
+    {
+      title: "Projects",
+      icon: FolderKanban,
+      href: "/projects",
     },
     {
       title: "Users",
@@ -125,14 +134,60 @@ export function Sidebar({}: SidebarProps) {
       ]
     : []
 
-  const routes = isOrganizationView ? organizationRoutes : enterpriseRoutes
+  // Project-specific routes
+  const projectRoutes = selectedProject && selectedOrganization
+    ? [
+        {
+          title: "Project Overview",
+          icon: BarChart3,
+          href: `/projects/${selectedProject.id}`,
+        },
+        {
+          title: "Repositories",
+          icon: GitBranch,
+          href: `/projects/${selectedProject.id}/repositories`,
+        },
+        {
+          title: "Modules",
+          icon: Package,
+          href: `/projects/${selectedProject.id}/modules`,
+        },
+        {
+          title: "Deployments",
+          icon: FileOutput,
+          href: `/projects/${selectedProject.id}/deployments`,
+        },
+        {
+          title: "Runs",
+          icon: ListChecks,
+          href: `/projects/${selectedProject.id}/runs`,
+        },
+      ]
+    : []
+
+  let routes = enterpriseRoutes
+  if (isProjectView) {
+    routes = projectRoutes
+  } else if (isOrganizationView) {
+    routes = organizationRoutes
+  }
 
   // Filter routes based on search query
   const filteredRoutes = routes.filter((route) => route.title.toLowerCase().includes(searchQuery.toLowerCase()))
 
   const handleBackToEnterprise = () => {
     setSelectedOrganization(null)
+    setSelectedProject(null)
     router.push("/")
+  }
+
+  const handleBackToOrganization = () => {
+    setSelectedProject(null)
+    if (selectedOrganization) {
+      router.push(`/organizations/${selectedOrganization.id}`)
+    } else {
+      router.push("/organizations")
+    }
   }
 
   const handleLogout = async () => {
@@ -168,8 +223,26 @@ export function Sidebar({}: SidebarProps) {
           </Button>
         </div>
 
-        {/* Organization context */}
-        {isOrganizationView && open && selectedOrganization && (
+        {/* Context-specific back buttons and info */}
+        {open && isProjectView && selectedProject && selectedOrganization && (
+          <div className="border-b px-4 py-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex w-full items-center justify-start gap-2 text-sm font-medium mb-1"
+              onClick={handleBackToOrganization}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back to {selectedOrganization.name}
+            </Button>
+            <div className="mt-1 rounded-md bg-muted/50 p-3">
+              <h2 className="text-xs font-semibold text-muted-foreground">PROJECT</h2>
+              <p className="mt-1 truncate text-sm font-medium">{selectedProject.name}</p>
+            </div>
+          </div>
+        )}
+
+        {open && !isProjectView && isOrganizationView && selectedOrganization && (
           <div className="border-b px-4 py-3">
             <Button
               variant="ghost"

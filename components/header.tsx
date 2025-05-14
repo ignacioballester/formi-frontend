@@ -14,12 +14,22 @@ interface HeaderProps {}
 export function Header({}: HeaderProps) {
   const { setTheme } = useTheme()
   const pathname = usePathname()
-  const { open: sidebarOpen, toggleSidebar, isMobile } = useSidebar()
+  const { open: sidebarOpen, toggleSidebar, isMobile, openMobile } = useSidebar()
 
   if (pathname === "/login") return null
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background px-4 md:px-6">
+    <header
+      className={`sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background transition-all duration-300 ease-in-out ${
+        isMobile
+          ? openMobile
+            ? 'pl-72' // Mobile: Sheet Open
+            : 'pl-4' // Mobile: Sheet Closed
+          : sidebarOpen
+          ? 'md:pl-64' // Desktop: Sidebar Expanded
+          : 'md:pl-12' // Desktop: Sidebar Collapsed
+      } pr-4 md:pr-6`}
+    >
       <div className="flex items-center gap-2">
         {isMobile && (
           <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">

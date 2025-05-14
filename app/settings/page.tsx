@@ -51,11 +51,11 @@ import {
   getUsers,
   getGroups,
   createRoleAssignment,
-  removeRoleAssignment,
   getUserByUsername,
   getGroupByName,
   isUserAuthorized
 } from "@/lib/iam";
+import { deleteRoleAssignmentAction } from "@/app/actions/iam/actions"; // Updated import path
 
 export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
@@ -263,18 +263,20 @@ function RoleAssignmentsTab() {
   }, [session, sessionStatus]);
 
   const handleDeleteRoleAssignment = async (assignment: RoleAssignment) => {
-    if (!session?.accessToken) {
-      toast({ title: "Error", description: "Authentication token not available.", variant: "destructive" });
-      return;
-    }
     try {
-      console.log("[RoleAssignmentsTab] handleDeleteRoleAssignment: removing assignment:", assignment);
-      await removeRoleAssignment(assignment, session.accessToken);
-      toast({ title: "Success", description: "Role assignment removed." });
-      fetchAssignments(); // Refetch after delete
-    } catch (error: any) {
-      console.error("Error removing role assignment:", error);
-      toast({ title: "Error", description: error.message || "Failed to remove role assignment.", variant: "destructive" });
+      console.log("[RoleAssignmentsTab] handleDeleteRoleAssignment: calling server action for assignment:", assignment);
+      const result = await deleteRoleAssignmentAction(assignment);
+
+      if (result.success) {
+        toast({ title: "Success", description: "Role assignment removed." });
+        fetchAssignments(); // Refetch after delete
+      } else {
+        console.error("Error removing role assignment (from server action):", result.error);
+        toast({ title: "Error", description: result.error || "Failed to remove role assignment.", variant: "destructive" });
+      }
+    } catch (error: any) { // Catch potential errors from calling the action itself, though server action handles internal errors
+      console.error("Error calling deleteRoleAssignmentAction:", error);
+      toast({ title: "Error", description: error.message || "An unexpected error occurred.", variant: "destructive" });
     }
     setIsDeleteDialogOpen(false);
     setSelectedRoleAssignment(null);

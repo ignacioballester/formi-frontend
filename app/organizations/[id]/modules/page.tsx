@@ -1,131 +1,166 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import { Package, GitBranch, Folder, PlusCircle } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { useParams, useRouter } from "next/navigation"
+import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import { getModules, getOrganization, type Module, type Organization } from "@/lib/api"
 import { useOrganization } from "@/contexts/organization-context"
+import { getModules, getOrganization, getProjects, type Module, type Organization, type Project } from "@/lib/api"
+import { toast } from "@/components/ui/use-toast"
+import { deleteModuleAction } from "@/app/actions/modules/actions"
+import { ModulesOverview } from "@/components/modules/modules-overview"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function OrganizationModulesPage() {
-  const { id } = useParams<{ id: string }>()
-  const { setSelectedOrganization } = useOrganization()
-  const [loading, setLoading] = useState(true)
+  const params = useParams<{ id: string }>()
+  const router = useRouter()
+  const { selectedOrganization: contextOrg, setSelectedOrganization: setContextSelectedOrg } = useOrganization()
+  const { data: session, status: sessionStatus } = useSession()
+
+  const organizationId = params.id
+
+  const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(contextOrg)
   const [modules, setModules] = useState<Module[]>([])
-  const [organization, setOrganization] = useState<Organization | null>(null)
+  const [projectsInOrg, setProjectsInOrg] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const getClientToken = useCallback(async () => {
+    if (!session?.accessToken) {
+      toast({ title: "Authentication Error", description: "Access token not available.", variant: "destructive" })
+      throw new Error("Access token not available")
+    }
+    return session.accessToken
+  }, [session])
 
   useEffect(() => {
     async function fetchData() {
+      if (!organizationId || sessionStatus !== "authenticated") {
+        if (sessionStatus === "loading") return
+        setIsLoading(false)
+        setError(sessionStatus !== "authenticated" ? "User not authenticated." : "Organization ID missing.")
+        return
+      }
+
+      setIsLoading(true)
+      setError(null)
       try {
-        setLoading(true)
-        const orgId = Number.parseInt(id as string)
+        const token = await getClientToken()
+        const numericOrgId = Number(organizationId)
 
-        // Fetch organization details
-        const org = await getOrganization(orgId)
-        setOrganization(org)
-        setSelectedOrganization(org)
+        if (!contextOrg || contextOrg.id.toString() !== organizationId) {
+          const orgData = await getOrganization(numericOrgId, async () => token)
+          setCurrentOrganization(orgData)
+          setContextSelectedOrg(orgData)
+        } else {
+          setCurrentOrganization(contextOrg)
+        }
 
-        // Fetch modules for this organization
-        const modulesData = await getModules({ organization_id: orgId })
-        setModules(modulesData)
-      } catch (error) {
-        console.error("Error fetching data:", error)
+        const [fetchedModules, fetchedProjects] = await Promise.all([
+          getModules({ organization_id: numericOrgId }, async () => token),
+          getProjects(numericOrgId, async () => token) // Fetch projects in the org
+        ])
+        
+        setModules(fetchedModules)
+        setProjectsInOrg(fetchedProjects)
+
+      } catch (err: any) {
+        console.error("Error fetching organization modules data:", err)
+        setError(err.message || "An unexpected error occurred.")
+        toast({ title: "Error Loading Page Data", description: err.message, variant: "destructive" })
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
+    if (sessionStatus === "unauthenticated") router.push("/login")
+    else fetchData()
+  }, [organizationId, sessionStatus, getClientToken, router, contextOrg, setContextSelectedOrg])
 
-    fetchData()
-  }, [id, setSelectedOrganization])
+  const handleDeleteModule = async (moduleId: number) => {
+    const moduleToDelete = modules.find(m => m.id === moduleId)
+    if (!moduleToDelete) return false
 
-  return (
-    <div className="ml-72 flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Modules</h2>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Module
+    try {
+      const token = await getClientToken()
+      const result = await deleteModuleAction(moduleId, token)
+      if (result.success) {
+        toast({ title: "Module Deleted", description: `Module "${moduleToDelete.name}" has been deleted.` })
+        setModules(prevModules => prevModules.filter(m => m.id !== moduleId))
+        return true
+      } else {
+        throw new Error(result.error || "Failed to delete module.")
+      }
+    } catch (error: any) {
+      console.error("Error deleting module:", error)
+      toast({ title: "Error Deleting Module", description: error.message, variant: "destructive" })
+      return false
+    }
+  }
+  
+  if (isLoading || sessionStatus === "loading") {
+    return (
+      <div className="space-y-6 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-10 w-10" />
+            <div><Skeleton className="h-8 w-48" /></div>
+          </div>
+          <Skeleton className="h-10 w-[200px]" /> 
+        </div>
+        <Skeleton className="h-[300px] w-full" /> 
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full min-h-[calc(100vh-100px)] p-4">
+        <p className="text-lg text-destructive text-center mb-4">{error}</p>
+        <Button onClick={() => router.back()} variant="outline">Go Back</Button>
+      </div>
+    )
+  }
+
+  if (!currentOrganization) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full min-h-[calc(100vh-100px)] p-4">
+        <p className="text-lg text-muted-foreground">Organization data not found.</p>
+        <Button asChild variant="outline" className="mt-4">
+          <Link href={`/organizations`}>Back to Organizations</Link>
         </Button>
       </div>
+    )
+  }
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {loading ? (
-          Array(6)
-            .fill(0)
-            .map((_, i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-4 w-full" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-20 w-full" />
-                </CardContent>
-                <CardFooter>
-                  <Skeleton className="h-10 w-full" />
-                </CardFooter>
-              </Card>
-            ))
-        ) : modules.length > 0 ? (
-          modules.map((module) => (
-            <Card key={module.id}>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Package className="mr-2 h-5 w-5" />
-                  {module.name}
-                </CardTitle>
-                <CardDescription>ID: {module.id}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center text-sm">
-                  <GitBranch className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span>
-                    {module.git_reference.branch ||
-                      module.git_reference.tag ||
-                      module.git_reference.commit ||
-                      "Unknown reference"}
-                  </span>
-                </div>
-                <div className="flex items-center text-sm">
-                  <Folder className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span>{module.working_directory || "/"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={module.status.configuration_valid ? "default" : "destructive"}>
-                    Config: {module.status.configuration_valid ? "Valid" : "Invalid"}
-                  </Badge>
-                  <Badge variant={module.status.terraform_valid ? "default" : "destructive"}>
-                    Terraform: {module.status.terraform_valid ? "Valid" : "Invalid"}
-                  </Badge>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button asChild className="w-full">
-                  <Link href={`/organizations/${id}/modules/${module.id}`}>View Details</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))
-        ) : (
-          <Card className="col-span-full">
-            <CardHeader>
-              <CardTitle>No Modules Found</CardTitle>
-              <CardDescription>No modules found for this organization.</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button className="w-full">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create Module
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
+  return (
+    <div className="space-y-6 p-4 md:p-8 pt-6">
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" size="icon" asChild>
+          <Link href={`/organizations/${currentOrganization.id}`}>
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Modules in {currentOrganization.name}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            View and manage modules for this organization.
+          </p>
+        </div>
       </div>
+      <ModulesOverview 
+        modules={modules}
+        organizationId={currentOrganization.id.toString()}
+        projectsInOrg={projectsInOrg} // Pass the fetched projects
+        isLoading={isLoading} // Pass the loading state from this page
+        onDeleteModule={handleDeleteModule}
+        pageTitle={`Modules in ${currentOrganization.name}`}
+        pageDescription={`Manage modules associated with ${currentOrganization.name} or its projects.`}
+      />
     </div>
   )
 }

@@ -78,7 +78,7 @@ function AppShellContent({ children, isMobile }: { children: React.ReactNode; is
         <main
           className={cn(
             "flex-1 overflow-y-auto transition-all duration-300 ease-in-out",
-            sidebarOpen ? "lg:pl-72" : "lg:pl-20",
+            sidebarOpen ? "md:pl-72" : "md:pl-20",
           )}
         >
           <div className="p-4 md:p-6 lg:p-8">{children}</div>

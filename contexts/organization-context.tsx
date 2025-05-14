@@ -1,25 +1,32 @@
 "use client"
 
 import { createContext, useContext, useState, type ReactNode } from "react"
-import type { Organization } from "@/lib/api"
+import type { Organization, Project } from "@/lib/api"
 
 interface OrganizationContextType {
   selectedOrganization: Organization | null
   setSelectedOrganization: (org: Organization | null) => void
   isOrganizationView: boolean
+  selectedProject: Project | null
+  setSelectedProject: (project: Project | null) => void
+  isProjectView: boolean
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined)
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
 
   return (
     <OrganizationContext.Provider
       value={{
         selectedOrganization,
         setSelectedOrganization,
-        isOrganizationView: selectedOrganization !== null,
+        isOrganizationView: selectedOrganization !== null || selectedProject !== null,
+        selectedProject,
+        setSelectedProject,
+        isProjectView: selectedProject !== null,
       }}
     >
       {children}
