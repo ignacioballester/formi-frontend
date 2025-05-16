@@ -560,7 +560,7 @@ export interface RunnerRun {
   timestamp: string; // Should be parsed as ISO 8601 date string
 }
 
-const RUNNER_API_BASE_URL = "http://localhost:8084";
+const RUNNER_API_BASE_URL = `${process.env.NEXT_PUBLIC_RUNNER_API_URL || "http://localhost:8084/api/v1"}`;
 
 export async function getRunnerRuns(
   getClientToken: () => Promise<string> // Token might not be strictly needed if runner API is not auth-protected

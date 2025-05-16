@@ -2,7 +2,7 @@
 
 import { type SecretResponse, type SecretCreate, type SecretUpdate } from "@/lib/api";
 
-const SECRETS_API_BASE_URL = 'http://localhost:8082';
+const SECRETS_API_BASE_URL = `${process.env.NEXT_PUBLIC_SECRET_API_URL || "http://localhost:8082/api/v1"}`;
 
 export async function listSecretsAction(
   token: string,
@@ -10,6 +10,7 @@ export async function listSecretsAction(
   projectId?: number,
   type?: string
 ): Promise<{ success: boolean; data?: SecretResponse[]; error?: string }> {
+  console.log('Listing secrets:', token, organizationId, projectId, type);
   try {
     const queryParams = new URLSearchParams();
     
@@ -136,6 +137,7 @@ export async function getSecretAction(
   projectId?: number,
   includePrivate: boolean = true // Default to true to get data for editing
 ): Promise<{ success: boolean; data?: SecretResponse; error?: string }> {
+  console.log('Getting secret:', name, type, organizationId, projectId, includePrivate);
   try {
     const queryParams = new URLSearchParams();
     queryParams.append('type', type);

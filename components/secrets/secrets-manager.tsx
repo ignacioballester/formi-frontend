@@ -37,11 +37,6 @@ import {
   SecretTypeDefinition,
   DataAttribute,
   SecretUpdate,
-  listSecrets,
-  createSecret,
-  getSecret,
-  updateSecret,
-  deleteSecret,
 } from "@/lib/api"
 import { 
     listSecretsAction, 
@@ -275,6 +270,7 @@ export function SecretsManager({
 
     try {
       const token = await getClientToken();
+      console.log('Getting secret:', secretToEdit.name, secretToEdit.type, secretToEdit.organization_id, secretToEdit.project_id, true);
       const result = await getSecretAction(token, secretToEdit.name, secretToEdit.type, secretToEdit.organization_id, secretToEdit.project_id, true);
       if (result.success && result.data) {
         const fullSecret = result.data;
