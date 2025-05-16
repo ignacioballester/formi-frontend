@@ -18,7 +18,7 @@ import {
   type Module, // Existing module type
   type UpdateModuleInput, // For the update action
   type CreateModuleInput, // <-- ADD THIS IMPORT
-} from "@/lib/api";
+} from "@/lib/api-core";
 import { getRepoReferencesAction, updateModuleAction } from "@/app/actions/modules/actions"; // Ensure updateModuleAction exists
 
 interface EditModuleFormProps {

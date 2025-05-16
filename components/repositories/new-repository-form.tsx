@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form } from "@/components/ui/form"
 import { toast } from "@/components/ui/use-toast"
-import { createRepository, CreateRepositoryInput, Organization } from "@/lib/api"
+import { createRepository, CreateRepositoryInput, Organization } from "@/lib/api-core"
 import { RepositoryFormFields, repositoryFormSchema, RepositoryFormValues } from "@/components/forms/repository-form-fields"
 
 interface NewRepositoryFormProps {

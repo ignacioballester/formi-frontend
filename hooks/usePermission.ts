@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { isUserAuthorized } from '@/lib/iam'; // Assuming lib/iam.ts is in '@/lib'
+import { isUserAuthorized } from '@/lib/api-iam'; // Assuming lib/iam.ts is in '@/lib'
 
 interface UsePermissionOptions {
   resourceName: string;

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProjects as getProjectsFromServer } from '@/lib/api'; // Alias to avoid naming conflict
+import { getProjects as getProjectsFromServer } from '@/lib/api-core'; // Alias to avoid naming conflict
 import { getAppServerSession } from '@/lib/auth-server';
 
 export async function GET(

@@ -28,7 +28,7 @@ import {
   type Repository,
   type ModuleConfig,
   type UpdateModuleInput,
-} from '@/lib/api';
+} from '@/lib/api-core';
 
 export default function EditProjectModulePage() {
   const params = useParams<{ projectId: string; moduleId: string }>();

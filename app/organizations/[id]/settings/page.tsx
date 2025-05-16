@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
-import { getOrganization, type Organization } from "@/lib/api"
+import { getOrganization, type Organization } from "@/lib/api-core"
 import { useOrganization } from "@/contexts/organization-context"
 import { SecretsManager } from "@/components/secrets/secrets-manager"
 

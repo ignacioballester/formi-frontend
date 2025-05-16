@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
 import { useOrganization } from "@/contexts/organization-context"
-import { getModules, getOrganization, getProjects, type Module, type Organization, type Project } from "@/lib/api"
+import { getModules, getOrganization, getProjects, type Module, type Organization, type Project } from "@/lib/api-core"
 import { toast } from "@/components/ui/use-toast"
 import { deleteModuleAction } from "@/app/actions/modules/actions"
 import { ModulesOverview } from "@/components/modules/modules-overview"

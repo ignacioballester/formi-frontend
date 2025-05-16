@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDeployments as getDeploymentsFromServer } from '@/lib/api'; // Alias
+import { getDeployments as getDeploymentsFromServer } from '@/lib/api-core'; // Alias
 import { getAppServerSession } from '@/lib/auth-server';
 
 export async function GET(

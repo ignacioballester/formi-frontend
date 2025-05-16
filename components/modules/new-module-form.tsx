@@ -11,7 +11,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
 import { toast } from "@/components/ui/use-toast";
 import { ModuleFormFields, moduleSchema, type ModuleFormValues } from "@/components/forms/module-form-fields";
-import { getRepositories, type Repository, type GitReference, type CreateModuleInput } from "@/lib/api";
+import { getRepositories, type Repository, type GitReference, type CreateModuleInput } from "@/lib/api-core";
 import { getRepoReferencesAction, createModuleAction } from "@/app/actions/modules/actions"; // Ensure this path is correct
 
 interface NewModuleFormProps {

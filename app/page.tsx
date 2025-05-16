@@ -24,7 +24,7 @@ import {
   Cell,
   Legend,
 } from "recharts"
-import { type Organization } from "@/lib/api"
+import { type Organization } from "@/lib/api-core"
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)

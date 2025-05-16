@@ -1,6 +1,6 @@
 'use server';
 
-import { type SecretResponse, type SecretCreate, type SecretUpdate } from "@/lib/api";
+import { type SecretResponse, type SecretCreate, type SecretUpdate } from "@/lib/api-core";
 
 const SECRETS_API_BASE_URL = 'http://localhost:8082';
 
@@ -174,7 +174,7 @@ export async function getSecretAction(
 export async function updateSecretAction(
   token: string,
   name: string,
-  updateData: import("@/lib/api").SecretUpdate
+  updateData: import("@/lib/api-core").SecretUpdate
 ): Promise<{ success: boolean; data?: SecretResponse; error?: string }> {
   try {
     const url = `${SECRETS_API_BASE_URL}/secrets/${name}`;
@@ -211,7 +211,7 @@ export async function updateSecretAction(
 // New action to fetch secret type definitions
 export async function getSecretTypesAction(token: string): Promise<{
   success: boolean;
-  data?: import("@/lib/api").SecretTypeDefinition[];
+  data?: import("@/lib/api-core").SecretTypeDefinition[];
   error?: string;
 }> {
   try {

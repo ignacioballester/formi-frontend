@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Eye, RefreshCw } from "lucide-react"; // Eye for view details, RefreshCw for refresh
-import { type RunnerRun, type RunnerRunStatus } from "@/lib/api"; // Assuming these types will be defined in lib/api
+import { type RunnerRun, type RunnerRunStatus } from "@/lib/api-core"; // Assuming these types will be defined in lib/api
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns'; // For formatting timestamps

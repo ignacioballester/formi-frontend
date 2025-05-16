@@ -20,7 +20,7 @@ import {
   getRepository,
   type ModuleConfig,
   UpdateModuleInput,
-} from "@/lib/api";
+} from "@/lib/api-core";
 import { getModuleAction, updateModuleAction } from "@/app/actions/modules/actions";
 import { useOrganization } from "@/contexts/organization-context";
 import { EditModuleForm } from "@/components/modules/edit-module-form";

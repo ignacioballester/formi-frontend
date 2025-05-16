@@ -30,7 +30,7 @@ import {
   type SecretIdentifier,
   type DeploymentVariableInput,
   type ModuleConfig
-} from '@/lib/api';
+} from '@/lib/api-core';
 
 const RJSFForm = withTheme(shadcnTheme);
 

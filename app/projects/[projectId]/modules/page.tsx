@@ -18,7 +18,7 @@ import {
     getModules, 
     getOrganization as apiGetOrganization, // Alias to avoid conflict if a local getOrganization is defined
     getProjects, // To fetch all projects in parent org
-} from '@/lib/api';
+} from '@/lib/api-core';
 import { deleteModuleAction } from '@/app/actions/modules/actions';
 import { ModulesOverview } from "@/components/modules/modules-overview";
 

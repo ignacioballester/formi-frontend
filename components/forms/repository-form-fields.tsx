@@ -6,7 +6,7 @@ import * as z from "zod"
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { SecretSelector } from "@/components/selectors/secret-selector"
-import { SecretIdentifier } from "@/lib/api"
+import { SecretIdentifier } from "@/lib/api-core"
 
 // Schema for the form fields, can be extended by parent components
 export const repositoryFormSchema = z.object({

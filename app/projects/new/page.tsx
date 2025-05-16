@@ -15,7 +15,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { type Organization, getOrganizations, createProject, type CreateProjectInput } from "@/lib/api";
+import { type Organization, getOrganizations, createProject, type CreateProjectInput } from "@/lib/api-core";
 
 // Form validation schema
 const formSchema = z.object({

@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
-import { createOrganization } from "@/lib/api"
+import { createOrganization } from "@/lib/api-core"
 
 // Form validation schema
 const formSchema = z.object({

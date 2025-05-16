@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState, useMemo } from "react"
 import { PlusCircle, GitFork, MoreHorizontal, Edit, ExternalLink, Filter } from "lucide-react"
-import { Repository, Project } from "@/lib/api"
+import { Repository, Project } from "@/lib/api-core"
 import { Button } from "@/components/ui/button"
 import {
   Select,

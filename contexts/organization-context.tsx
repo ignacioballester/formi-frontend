@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, type ReactNode } from "react"
-import type { Organization, Project } from "@/lib/api"
+import type { Organization, Project } from "@/lib/api-core"
 
 interface OrganizationContextType {
   selectedOrganization: Organization | null

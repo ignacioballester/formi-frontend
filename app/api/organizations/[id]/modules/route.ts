@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getModules as getModulesFromServer } from '@/lib/api'; // Alias
+import { getModules as getModulesFromServer } from '@/lib/api-core'; // Alias
 import { getAppServerSession } from '@/lib/auth-server';
 
 export async function GET(

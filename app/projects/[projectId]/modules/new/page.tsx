@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
 import { NewModuleForm } from '@/components/modules/new-module-form';
 import { useOrganization } from '@/contexts/organization-context';
-import { getProject, getOrganization, type Project, type Organization } from '@/lib/api';
+import { getProject, getOrganization, type Project, type Organization } from '@/lib/api-core';
 
 export default function NewProjectModulePage() {
   const params = useParams<{ projectId: string }>();

@@ -10,7 +10,7 @@ import {
   type CreateModuleInput,
   type UpdateModuleInput,
   type Module
-} from "@/lib/api";
+} from "@/lib/api-core";
 import { type GetTokenFn } from "@/lib/api-retry";
 
 export async function getRepoReferencesAction(

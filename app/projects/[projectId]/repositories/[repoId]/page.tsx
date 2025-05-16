@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { useOrganization } from "@/contexts/organization-context";
-import { type Project, type Repository, type Organization, getProject, getOrganization } from "@/lib/api";
+import { type Project, type Repository, type Organization, getProject, getOrganization } from "@/lib/api-core";
 import { getRepositoryAction } from "@/app/actions/repositories/actions";
 import { EditRepositoryForm } from "@/components/repositories/edit-repository-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

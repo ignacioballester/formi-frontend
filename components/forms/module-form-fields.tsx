@@ -5,7 +5,7 @@ import { Control } from "react-hook-form";
 import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { type Repository, type GitReference } from "@/lib/api"; // Assuming GitReference is exported
+import { type Repository, type GitReference } from "@/lib/api-core"; // Assuming GitReference is exported
 
 // Zod schema for module form validation
 export const moduleSchema = z.object({

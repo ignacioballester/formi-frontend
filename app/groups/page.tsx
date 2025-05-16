@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getGroups, type IAMGroup } from "@/lib/iam"
+import { getIamGroups, type Group as IAMGroup } from "@/lib/api-iam"
 
 export default function GroupsPage() {
   const { data: session, status: sessionStatus } = useSession()
@@ -42,7 +42,7 @@ export default function GroupsPage() {
       try {
         setLoading(true)
         setError(null)
-        const groupsData = await getGroups(session.accessToken)
+        const groupsData = await getIamGroups()
         setGroups(groupsData)
       } catch (err: any) {
         console.error("Error fetching groups:", err)

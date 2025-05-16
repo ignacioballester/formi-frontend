@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { listSecretsAction } from "@/app/actions/secrets/actions";
-import { type SecretResponse, type SecretIdentifier } from "@/lib/api";
+import { type SecretResponse, type SecretIdentifier } from "@/lib/api-core";
 
 interface SecretSelectorProps {
   organizationId: string | number;

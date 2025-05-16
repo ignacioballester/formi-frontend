@@ -42,7 +42,7 @@ import {
   getSecret,
   updateSecret,
   deleteSecret,
-} from "@/lib/api"
+} from "@/lib/api-core"
 import { 
     listSecretsAction, 
     createSecretAction, 

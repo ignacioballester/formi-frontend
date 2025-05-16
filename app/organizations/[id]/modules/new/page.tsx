@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewModuleForm } from "@/components/modules/new-module-form";
 import { useOrganization } from "@/contexts/organization-context";
-import { getOrganization, type Organization } from "@/lib/api";
+import { getOrganization, type Organization } from "@/lib/api-core";
 import { toast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 

@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getRepositories, getOrganization, type Repository, type Organization, type Project, getProjects } from "@/lib/api"
+import { getRepositories, getOrganization, type Repository, type Organization, type Project, getProjects } from "@/lib/api-core"
 import { useOrganization } from "@/contexts/organization-context"
 import { toast } from "@/components/ui/use-toast"
 import { deleteRepositoryAction } from "@/app/actions/repositories/actions"

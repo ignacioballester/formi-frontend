@@ -19,7 +19,7 @@ import {
     getDeployments,
     getModules, // To fetch modules for displaying names
     getOrganization as apiGetOrganization,
-} from '@/lib/api';
+} from '@/lib/api-core';
 // Assuming you might add actions for redeploy, update, destroy later
 // import { redeployDeploymentAction, destroyDeploymentAction } from '@/app/actions/deployments/actions'; 
 import { DeploymentsOverview } from "@/components/deployments/deployments-overview";

@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
-import { Organization, getOrganization } from "@/lib/api"
+import { Organization, getOrganization } from "@/lib/api-core"
 import { useOrganization } from "@/contexts/organization-context"
 import { NewRepositoryForm } from "@/components/repositories/new-repository-form"
 import { Skeleton } from "@/components/ui/skeleton"

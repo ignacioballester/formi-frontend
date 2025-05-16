@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next"
 import type { Session } from "next-auth"
 import { authOptions } from "./auth"
-import { isUserAuthorized } from "./iam"
+import { isUserAuthorized } from "./api-iam"
 import { TokenRefreshFailedError } from "./api-retry"
 
 /**
@@ -24,7 +24,7 @@ export const checkServerSidePermission = async (
   scopes: string[]
 ): Promise<boolean> => {
   try {
-    console.log("[checkServerSidePermission] Attempting authorization. Retry logic is now within isUserAuthorized.")
+    console.log("[checkServerSidePermission] Attempting authorization. Will rely on new token logic via isUserAuthorized.")
     return await isUserAuthorized(resourceName, scopes)
   } catch (error: any) {
     if (error instanceof TokenRefreshFailedError) {
@@ -40,6 +40,6 @@ export const checkServerSidePermission = async (
 // import { checkServerSidePermission } from '@/lib/auth-server'
 // async function MyServerComponent() {
 //   const canUpdateSettings = await checkServerSidePermission('enterprise-1', ['update_enterprise'])
-//   if (!canUpdateSettings) { return <p>Not Authorized</p> }
+//   if (!canUpdateSettings) { return <p>Not Authorized</p> } يتعذر عرض عنصر التحكم بسبب خطأ في التهيئة.
 //   return <SettingsPage />
 // }

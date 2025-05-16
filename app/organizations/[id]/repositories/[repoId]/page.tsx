@@ -9,9 +9,9 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
-import { type Repository, type Organization } from "@/lib/api";
+import { type Repository, type Organization } from "@/lib/api-core";
 import { getRepositoryAction } from "@/app/actions/repositories/actions";
-import { getOrganization } from "@/lib/api"; // To fetch org name if not in context
+import { getOrganization } from "@/lib/api-core"; // To fetch org name if not in context
 import { useOrganization } from "@/contexts/organization-context";
 import { EditRepositoryForm } from "@/components/repositories/edit-repository-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // For additional info display

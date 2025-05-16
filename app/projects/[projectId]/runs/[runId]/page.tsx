@@ -22,7 +22,7 @@ import {
   type Project,
   type RunnerRun,
   type RunnerRunStatus
-} from '@/lib/api';
+} from '@/lib/api-core';
 
 // Helper to get badge variant from RunOverview (or duplicate here if preferred)
 const getStatusVariant = (status?: RunnerRunStatus): "default" | "secondary" | "destructive" | "outline" => {

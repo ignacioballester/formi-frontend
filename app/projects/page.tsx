@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { type Organization, type Project, getOrganizations, getProjects } from "@/lib/api";
+import { type Organization, type Project, getOrganizations, getProjects } from "@/lib/api-core";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,

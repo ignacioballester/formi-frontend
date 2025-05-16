@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/contexts/organization-context';
-import { type Project, type Repository, getProject, getRepositories, getOrganization, type Organization, getProjects } from '@/lib/api'; 
+import { type Project, type Repository, getProject, getRepositories, getOrganization, type Organization, getProjects } from '@/lib/api-core'; 
 import { RepositoriesOverview } from "@/components/repositories/repositories-overview";
 
 export default function ProjectRepositoriesPage() {

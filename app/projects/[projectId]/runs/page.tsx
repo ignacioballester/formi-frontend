@@ -20,7 +20,7 @@ import {
   type Organization,
   type RunnerRun,
   type Deployment,
-} from '@/lib/api';
+} from '@/lib/api-core';
 
 export default function ProjectRunsPage() {
   const params = useParams<{ projectId: string }>();

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getUsers, type IAMUser } from "@/lib/iam"
+import { getIamUsers, type User as IAMUser } from "@/lib/api-iam"
 
 export default function UsersPage() {
   const { data: session, status: sessionStatus } = useSession()
@@ -42,7 +42,7 @@ export default function UsersPage() {
       try {
         setLoading(true)
         setError(null)
-        const usersData = await getUsers(session.accessToken)
+        const usersData = await getIamUsers()
         setUsers(usersData)
       } catch (err: any) {
         console.error("Error fetching users:", err)

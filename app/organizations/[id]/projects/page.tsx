@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getProjects, getOrganization, type Project, type Organization } from "@/lib/api"
+import { getProjects, getOrganization, type Project, type Organization } from "@/lib/api-core"
 import { useOrganization } from "@/contexts/organization-context"
 import { toast } from "@/components/ui/use-toast"
 

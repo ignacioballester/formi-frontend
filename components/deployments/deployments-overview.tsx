@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { PlusCircle, MoreHorizontal, Eye, Edit, PlayCircle, Repeat, Trash2 } from "lucide-react";
-import { Deployment, Module } from "@/lib/api"; // Assuming Module type is needed for display
+import { Deployment, Module } from "@/lib/api-core"; // Assuming Module type is needed for display
 import { Button } from "@/components/ui/button";
 import {
   Table,

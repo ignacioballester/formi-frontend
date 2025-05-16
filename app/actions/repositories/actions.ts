@@ -1,6 +1,6 @@
 'use server';
 
-import { deleteRepository as apiDeleteRepository, getRepository as apiGetRepository, updateRepository as apiUpdateRepository, type Repository, type UpdateRepositoryInput } from "@/lib/api";
+import { deleteRepository as apiDeleteRepository, getRepository as apiGetRepository, updateRepository as apiUpdateRepository, type Repository, type UpdateRepositoryInput } from "@/lib/api-core";
 import { type GetTokenFn } from "@/lib/api-retry"; // Assuming GetTokenFn might be needed or a plain token
 
 // Helper to get the token; adapt if you have a centralized way like in secrets/actions.ts

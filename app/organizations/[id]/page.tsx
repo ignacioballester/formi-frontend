@@ -19,7 +19,7 @@ import {
   type Project,
   type Module,
   type Deployment,
-} from "@/lib/api"
+} from "@/lib/api-core"
 import { useOrganization } from "@/contexts/organization-context"
 
 export default function OrganizationDetailPage() {

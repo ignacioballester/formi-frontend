@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRepositories as getRepositoriesFromServer } from '@/lib/api'; // Alias
+import { getRepositories as getRepositoriesFromServer } from '@/lib/api-core'; // Alias
 import { getAppServerSession } from '@/lib/auth-server';
 
 export async function GET(

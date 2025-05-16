@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { useOrganization } from "@/contexts/organization-context";
-import { type Project, type Organization, getProject, getOrganization } from "@/lib/api";
+import { type Project, type Organization, getProject, getOrganization } from "@/lib/api-core";
 import { NewRepositoryForm } from "@/components/repositories/new-repository-form";
 
 export default function NewRepositoryPageProject() {

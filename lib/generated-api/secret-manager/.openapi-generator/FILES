@@ -1,0 +1,14 @@
+.gitignore
+.npmignore
+api.ts
+base.ts
+common.ts
+configuration.ts
+docs/DefaultApi.md
+docs/SecretCreate.md
+docs/SecretDataTypeAttribute.md
+docs/SecretResponse.md
+docs/SecretType.md
+docs/SecretUpdate.md
+git_push.sh
+index.ts

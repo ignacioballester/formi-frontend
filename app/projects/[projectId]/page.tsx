@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganization } from '@/contexts/organization-context';
-import { type Project, type Organization, getProject, getOrganization } from '@/lib/api'; // Assuming getProject exists
+import { type Project, type Organization, getProject, getOrganization } from '@/lib/api-core'; // Assuming getProject exists
 import { toast } from '@/components/ui/use-toast';
 
 export default function ProjectOverviewPage() {

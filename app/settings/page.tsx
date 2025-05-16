@@ -38,24 +38,25 @@ import type {
   Organization,
   Project,
   // Repository, // Assuming Repository type might come from lib/api.ts or elsewhere if needed
-} from "@/lib/api";
+} from "@/lib/api-core";
 import type {
   RoleAssignment,
-  IAMRole as Role, // Import with alias
-  IAMUser as User, // Import with alias
-  IAMGroup as Group // Import with alias
-} from "@/lib/iam";
+  Role, // Changed from IAMRole
+  User, // Changed from IAMUser
+  Group, // Changed from IAMGroup
+  GetRolesByResourceTypeResourceTypeEnum // Added import for the enum
+} from "@/lib/api-iam";
 import {
-  getRoleAssignmentsOnResource,
-  getRolesByResourceType,
-  getUsers,
-  getGroups,
-  createRoleAssignment,
-  getUserByUsername,
-  getGroupByName,
+  getIamRoleAssignmentsOnResource, // Renamed
+  getIamRolesByResourceType,     // Renamed
+  getIamUsers,                   // Renamed
+  getIamGroups,                  // Renamed
+  // createIamRoleAssignment, // No longer called directly from here
+  getIamUserByUsername,          // Renamed
+  getIamGroupByName,             // Renamed
   isUserAuthorized
-} from "@/lib/iam";
-import { deleteRoleAssignmentAction } from "@/app/actions/iam/actions"; // Updated import path
+} from "@/lib/api-iam";
+import { deleteRoleAssignmentAction, createRoleAssignmentAction } from "@/app/actions/iam/actions"; // Added createRoleAssignmentAction
 
 export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
@@ -232,11 +233,11 @@ function RoleAssignmentsTab() {
   const resourceName = "enterprise-1";
 
   const fetchAssignments = async () => {
-    if (!session?.accessToken || !resourceName) return;
+    if (!resourceName) return;
     setLoading(true);
     try {
       setApiError(null);
-      const assignments = await getRoleAssignmentsOnResource(resourceName, session.accessToken);
+      const assignments = await getIamRoleAssignmentsOnResource(resourceName);
       setRoleAssignments(assignments);
     } catch (error: any) {
       console.error("Error fetching role assignments:", error);
@@ -428,15 +429,15 @@ function AddRoleAssignmentForm({
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [loadingRoles, setLoadingRoles] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false); // For form submission state
 
   useEffect(() => {
     async function fetchFormData() {
-      if (!session?.accessToken) return;
       setLoadingRoles(true);
       try {
-        const roles = await getRolesByResourceType("enterprise", session.accessToken);
+        const roles = await getIamRolesByResourceType("enterprise" as GetRolesByResourceTypeResourceTypeEnum);
         setAvailableRoles(roles);
-      } catch (error) { 
+      } catch (error) {
         console.error("Failed to fetch roles", error);
         setFormError("Failed to load roles.");
       } finally {
@@ -448,23 +449,14 @@ function AddRoleAssignmentForm({
 
   useEffect(() => {
     async function fetchPrincipals() {
-      console.log("[AddRoleAssignmentForm] fetchPrincipals called. principalIdentifier:", principalIdentifier, "session?.accessToken exists:", !!session?.accessToken);
-      if (!session?.accessToken) {
-        console.log("[AddRoleAssignmentForm] fetchPrincipals exiting early: accessToken missing.");
-        setSuggestions([]);
-        return;
-      }
       setLoadingSuggestions(true);
-      console.log("[AddRoleAssignmentForm] fetchPrincipals: attempting to fetch", principalType);
       try {
         let fetchedPrincipals: (User | Group)[] = [];
         if (principalType === "user") {
-          const users = await getUsers(session.accessToken);
-          console.log("users", users);
+          const users = await getIamUsers();
           fetchedPrincipals = users;
         } else {
-          const groups = await getGroups(session.accessToken);
-          console.log("groups", groups);
+          const groups = await getIamGroups();
           fetchedPrincipals = groups;
         }
 
@@ -486,12 +478,8 @@ function AddRoleAssignmentForm({
       }
     }
     const debounce = setTimeout(() => {
-        console.log("[AddRoleAssignmentForm] useEffect for fetchPrincipals. sessionStatus:", sessionStatus, "principalIdentifier:", principalIdentifier);
         if (sessionStatus === "authenticated") {
-            console.log("[AddRoleAssignmentForm] useEffect: session is authenticated, calling fetchPrincipals.");
             fetchPrincipals();
-        } else {
-            console.log("[AddRoleAssignmentForm] useEffect: session NOT authenticated or principalIdentifier empty, NOT calling fetchPrincipals.");
         }
     }, 300);
     return () => clearTimeout(debounce);
@@ -499,43 +487,49 @@ function AddRoleAssignmentForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session?.accessToken) {
-      setFormError("Authentication token not available.");
-      return;
-    }
-    if (!roleName || !principalIdentifier) {
-        setFormError("All fields are required.");
-        return;
-    }
-    
-    let principalId = "";
+    setIsSubmitting(true); // Set submitting state
     setFormError(null);
 
+    if (!roleName || !principalIdentifier) {
+        setFormError("All fields are required.");
+        setIsSubmitting(false);
+        return;
+    }
+
     try {
-        // Resolve principalIdentifier to principalId
+        let principalIdToSubmit = "";
         if (principalType === "user") {
-            const user = await getUserByUsername(principalIdentifier, session.accessToken);
-            if (!user || !user.id) throw new Error("User not found.");
-            principalId = user.id;
+            const user = await getIamUserByUsername(principalIdentifier);
+            if (!user || !user.id) throw new Error("User not found or ID missing.");
+            principalIdToSubmit = user.id;
         } else {
-            const group = await getGroupByName(principalIdentifier, session.accessToken);
-            if (!group || !group.id) throw new Error("Group not found.");
-            principalId = group.id;
+            const group = await getIamGroupByName(principalIdentifier);
+            if (!group || !group.id) throw new Error("Group not found or ID missing.");
+            principalIdToSubmit = group.id;
         }
 
-        const assignment: Omit<RoleAssignment, 'resource_name'> & { resource_name: string } = {
+        const assignmentData: RoleAssignment = {
             resource_name: resourceName,
-            principal_id: principalId, 
-            principal_type: principalType,
+            principal_id: principalIdToSubmit,
+            principal_type: principalType as "user" | "group", // Cast as RoleAssignmentPrincipalTypeEnum if available and stricter
             role_name: roleName,
         };
-        await createRoleAssignment(assignment as RoleAssignment, session.accessToken);
-        toast({ title: "Success", description: "Role assignment created." });
-        onSuccess(assignment as RoleAssignment);
+
+        // Call the server action
+        const result = await createRoleAssignmentAction(assignmentData);
+
+        if (result.success && result.data) {
+            toast({ title: "Success", description: "Role assignment created." });
+            onSuccess(result.data); // Pass created assignment data to parent
+        } else {
+            throw new Error(result.error || "Failed to create role assignment via action.");
+        }
     } catch (error: any) {
         console.error("Error creating role assignment:", error);
         setFormError(error.message || "Failed to create role assignment.");
         toast({ title: "Error", description: error.message || "Failed to create assignment.", variant: "destructive" });
+    } finally {
+        setIsSubmitting(false); // Reset submitting state
     }
   };
   
@@ -660,8 +654,8 @@ function AddRoleAssignmentForm({
     </div>
     {formError && <p className="text-sm text-red-500 col-span-4 text-center">{formError}</p>}
     <DialogFooter>
-      <Button type="submit" disabled={loadingRoles || loadingSuggestions}>
-        {(loadingRoles || loadingSuggestions) ? "Loading Data..." : "Create Assignment"}
+      <Button type="submit" disabled={loadingRoles || loadingSuggestions || isSubmitting}>
+        {isSubmitting ? "Creating..." : (loadingRoles || loadingSuggestions) ? "Loading Data..." : "Create Assignment"}
       </Button>
     </DialogFooter>
   </form>;

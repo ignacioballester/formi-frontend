@@ -7,7 +7,7 @@ import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { type Organization } from "@/lib/api"
+import { type Organization } from "@/lib/api-core"
 import { useOrganization } from "@/contexts/organization-context"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {

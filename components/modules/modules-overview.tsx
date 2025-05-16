@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { type Module, type Project } from '@/lib/api'; // Assuming Module and Project types are available
+import { type Module, type Project } from '@/lib/api-core'; // Assuming Module and Project types are available
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface ModulesOverviewProps {

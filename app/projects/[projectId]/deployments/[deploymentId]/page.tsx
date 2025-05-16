@@ -27,7 +27,7 @@ import {
   type Module,
   type Deployment,
   type UpdateDeploymentInput
-} from '@/lib/api';
+} from '@/lib/api-core';
 
 const RJSFForm = withTheme(shadcnTheme);
 

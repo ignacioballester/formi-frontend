@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOrganizations } from '@/lib/api';
+import { getOrganizations } from '@/lib/api-core';
 import { getAppServerSession } from '@/lib/auth-server'; // To check session
 
 export async function GET() {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOrganization as getOrganizationFromServer } from '@/lib/api'; // Alias to avoid naming conflict
+import { getOrganization as getOrganizationFromServer } from '@/lib/api-core'; // Alias to avoid naming conflict
 import { getAppServerSession } from '@/lib/auth-server'; // For authentication/authorization if needed by getOrganizationFromServer
 
 export async function GET(
