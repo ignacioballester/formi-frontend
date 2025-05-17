@@ -51,17 +51,16 @@ export default function ProjectOverviewPage() {
 
         let projToSet = selectedProject;
         if (!projToSet || projToSet.id.toString() !== projectId) {
-          const projectData = await getProject(Number(projectId), async () => token);
+          const projectData = await getProject(token, Number(projectId));
           projToSet = projectData;
           setSelectedProject(projToSet); // Update context
         }
         setProjectLocal(projToSet);
 
-        if (projToSet) { // Ensure project is loaded before trying to get its org
+        if (projToSet) {
             let orgToSet = selectedOrganization;
-            // If no selected org, or if selected org doesn't match project's org
-            if (!orgToSet || orgToSet.id !== projToSet.organization_id) { 
-              orgToSet = await getOrganization(projToSet.organization_id, async () => token);
+            if ((!orgToSet || orgToSet.id !== projToSet.organization_id) && projToSet.organization_id) {
+              orgToSet = await getOrganization(token, projToSet.organization_id);
               setSelectedOrganization(orgToSet); // Update context
             }
             setOrganizationLocal(orgToSet);

@@ -5,10 +5,15 @@ import {
     createIamRoleAssignment,
     type RoleAssignment
 } from "@/lib/api-iam";
+import { getServerToken } from "@/lib/api-retry";
 
 export async function deleteRoleAssignmentAction(assignment: RoleAssignment): Promise<{ success: boolean; error?: string }> {
   try {
-    await removeIamRoleAssignment(assignment);
+    const token = await getServerToken();
+    if (!token) {
+        return { success: false, error: "Authentication token not available for server action." };
+    }
+    await removeIamRoleAssignment(token, assignment);
     console.log("[ServerAction] Role assignment removed successfully for:", assignment.principal_id, assignment.role_name, assignment.resource_name);
     return { success: true };
   } catch (error: any) {
@@ -19,7 +24,11 @@ export async function deleteRoleAssignmentAction(assignment: RoleAssignment): Pr
 
 export async function createRoleAssignmentAction(assignmentData: RoleAssignment): Promise<{ success: boolean; data?: RoleAssignment; error?: string }> {
     try {
-        await createIamRoleAssignment(assignmentData);
+        const token = await getServerToken();
+        if (!token) {
+            return { success: false, error: "Authentication token not available for server action." };
+        }
+        await createIamRoleAssignment(token, assignmentData);
         console.log("[ServerAction] Role assignment created successfully for:", assignmentData.principal_id, assignmentData.role_name, assignmentData.resource_name);
         return { success: true, data: assignmentData };
     } catch (error: any) {

@@ -195,7 +195,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       const now = Date.now();
-      const bufferSeconds = 15; // Refresh when 15 seconds are left
+      const bufferSeconds = 30; // Refresh when 30 seconds are left
       const shouldRefresh = now >= (internalToken.accessTokenExpires - bufferSeconds * 1000);
 
       console.log(`[JWT Callback] Checking token validity. Now: ${new Date(now)}, Expires: ${new Date(internalToken.accessTokenExpires)}, Buffer: ${bufferSeconds}s, ShouldRefresh: ${shouldRefresh}, CurrentError: ${internalToken.error}`);

@@ -44,7 +44,8 @@ import type {
   Role, // Changed from IAMRole
   User, // Changed from IAMUser
   Group, // Changed from IAMGroup
-  GetRolesByResourceTypeResourceTypeEnum // Added import for the enum
+  GetRolesByResourceTypeResourceTypeEnum, // Added import for the enum
+  RoleAssignmentPrincipalTypeEnum
 } from "@/lib/api-iam";
 import {
   getIamRoleAssignmentsOnResource, // Renamed
@@ -233,18 +234,27 @@ function RoleAssignmentsTab() {
   const resourceName = "enterprise-1";
 
   const fetchAssignments = async () => {
-    if (!resourceName) return;
+    if (sessionStatus === "loading") return;
+    if (!resourceName) {
+      setApiError("Resource name not available for fetching assignments.");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
+      if (sessionStatus !== "authenticated" || !session?.accessToken) {
+          throw new Error("User not authenticated or session token unavailable.");
+      }
       setApiError(null);
-      const assignments = await getIamRoleAssignmentsOnResource(resourceName);
+      const assignments = await getIamRoleAssignmentsOnResource(session.accessToken, resourceName);
       setRoleAssignments(assignments);
     } catch (error: any) {
       console.error("Error fetching role assignments:", error);
-      setApiError(error.message || "Failed to fetch role assignments");
+      const errorMessage = error.message || "Failed to fetch role assignments";
+      setApiError(errorMessage);
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch role assignments",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -253,15 +263,15 @@ function RoleAssignmentsTab() {
   };
 
   useEffect(() => {
-    if (sessionStatus === "authenticated" && session?.accessToken) {
+    if (sessionStatus === "authenticated") {
       fetchAssignments();
     } else if (sessionStatus === "unauthenticated"){
       setLoading(false);
       setApiError("User is not authenticated.");
-    } else {
-      setLoading(true); // session is loading
+    } else { 
+      setLoading(true);
     }
-  }, [session, sessionStatus]);
+  }, [sessionStatus, session, resourceName]);
 
   const handleDeleteRoleAssignment = async (assignment: RoleAssignment) => {
     try {
@@ -420,43 +430,55 @@ function AddRoleAssignmentForm({
   resourceName: string;
   onSuccess: (assignment: RoleAssignment) => void;
 }) {
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus, update } = useSession();
   const [principalType, setPrincipalType] = useState<"user" | "group">("user");
-  const [principalIdentifier, setPrincipalIdentifier] = useState(""); // Username or Group Name
+  const [principalIdentifier, setPrincipalIdentifier] = useState("");
   const [roleName, setRoleName] = useState("");
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
   const [suggestions, setSuggestions] = useState<(User | Group)[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [loadingRoles, setLoadingRoles] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false); // For form submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     async function fetchFormData() {
+      if (sessionStatus !== "authenticated") return;
       setLoadingRoles(true);
       try {
-        const roles = await getIamRolesByResourceType("enterprise" as GetRolesByResourceTypeResourceTypeEnum);
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            throw new Error("Session token unavailable or user not authenticated for fetching roles.");
+        }
+        const roles = await getIamRolesByResourceType(session.accessToken, "enterprise" as GetRolesByResourceTypeResourceTypeEnum);
         setAvailableRoles(roles);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch roles", error);
-        setFormError("Failed to load roles.");
+        setFormError(error.message || "Failed to load roles.");
       } finally {
         setLoadingRoles(false);
       }
     }
     if (sessionStatus === "authenticated") fetchFormData();
-  }, [session, sessionStatus]);
+  }, [sessionStatus, session]);
 
   useEffect(() => {
     async function fetchPrincipals() {
+      if (sessionStatus !== "authenticated") {
+        setSuggestions([]);
+        return;
+      }
       setLoadingSuggestions(true);
       try {
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            throw new Error("Session token unavailable or user not authenticated for fetching principals.");
+        }
+        
         let fetchedPrincipals: (User | Group)[] = [];
         if (principalType === "user") {
-          const users = await getIamUsers();
+          const users = await getIamUsers(session.accessToken);
           fetchedPrincipals = users;
         } else {
-          const groups = await getIamGroups();
+          const groups = await getIamGroups(session.accessToken);
           fetchedPrincipals = groups;
         }
 
@@ -470,9 +492,10 @@ function AddRoleAssignmentForm({
           setSuggestions(fetchedPrincipals);
         }
 
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Failed to fetch ${principalType}s:`, error);
         setSuggestions([]);
+        setFormError(`Failed to load ${principalType}s. ` + (error.message || ''));
       } finally {
         setLoadingSuggestions(false);
       }
@@ -483,11 +506,11 @@ function AddRoleAssignmentForm({
         }
     }, 300);
     return () => clearTimeout(debounce);
-  }, [principalIdentifier, principalType, session, sessionStatus]);
+  }, [principalIdentifier, principalType, sessionStatus, session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true); // Set submitting state
+    setIsSubmitting(true);
     setFormError(null);
 
     if (!roleName || !principalIdentifier) {
@@ -497,13 +520,18 @@ function AddRoleAssignmentForm({
     }
 
     try {
+        await update();
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            throw new Error("Session token unavailable or user not authenticated after refresh for submission.");
+        }
+
         let principalIdToSubmit = "";
         if (principalType === "user") {
-            const user = await getIamUserByUsername(principalIdentifier);
+            const user = await getIamUserByUsername(session.accessToken, principalIdentifier);
             if (!user || !user.id) throw new Error("User not found or ID missing.");
             principalIdToSubmit = user.id;
         } else {
-            const group = await getIamGroupByName(principalIdentifier);
+            const group = await getIamGroupByName(session.accessToken, principalIdentifier);
             if (!group || !group.id) throw new Error("Group not found or ID missing.");
             principalIdToSubmit = group.id;
         }
@@ -511,25 +539,25 @@ function AddRoleAssignmentForm({
         const assignmentData: RoleAssignment = {
             resource_name: resourceName,
             principal_id: principalIdToSubmit,
-            principal_type: principalType as "user" | "group", // Cast as RoleAssignmentPrincipalTypeEnum if available and stricter
+            principal_type: principalType as RoleAssignmentPrincipalTypeEnum, 
             role_name: roleName,
         };
 
-        // Call the server action
         const result = await createRoleAssignmentAction(assignmentData);
 
         if (result.success && result.data) {
             toast({ title: "Success", description: "Role assignment created." });
-            onSuccess(result.data); // Pass created assignment data to parent
+            onSuccess(result.data);
         } else {
             throw new Error(result.error || "Failed to create role assignment via action.");
         }
     } catch (error: any) {
         console.error("Error creating role assignment:", error);
-        setFormError(error.message || "Failed to create role assignment.");
-        toast({ title: "Error", description: error.message || "Failed to create assignment.", variant: "destructive" });
+        const errorMessage = error.message || "Failed to create role assignment.";
+        setFormError(errorMessage);
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
-        setIsSubmitting(false); // Reset submitting state
+        setIsSubmitting(false);
     }
   };
   

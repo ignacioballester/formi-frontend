@@ -67,38 +67,31 @@ export default function ProjectModulesPage() {
 
         let projData = contextProject;
         if (!projData || projData.id.toString() !== projectId) {
-            projData = await getProject(numericProjectId, async () => token);
-            setCurrentProject(projData);
-            setContextSelectedProject(projData);
+            projData = await getProject(token, numericProjectId);
         }
         if (!projData) throw new Error ("Project not found.");
-        setCurrentProject(projData); // Ensure currentProject state is set
+        setCurrentProject(projData);
+        setContextSelectedProject(projData);
 
         let orgData = contextOrg;
         if ((!orgData || orgData.id !== projData.organization_id) && projData.organization_id) {
-            orgData = await apiGetOrganization(projData.organization_id, async () => token);
-            setParentOrg(orgData);
-            setContextSelectedOrg(orgData);
+            orgData = await apiGetOrganization(token, projData.organization_id);
         }
         if (!orgData && projData.organization_id) throw new Error ("Parent organization not found for project.");
-        setParentOrg(orgData); // Ensure parentOrg state is set
+        setParentOrg(orgData);
+        setContextSelectedOrg(orgData);
         
         if (!projData.organization_id) throw new Error ("Project is missing parent organization ID.");
 
-        // Fetch modules for the current project
-        const projectModules = await getModules({ project_id: numericProjectId }, async () => token);
+        const projectModules = await getModules(token, { projectId: numericProjectId });
+        const orgModules = await getModules(token, { organizationId: projData.organization_id });
 
-        // Fetch modules for the parent organization
-        const orgModules = await getModules({ organization_id: projData.organization_id }, async () => token);
-
-        // Combine and de-duplicate modules
         const combinedModulesMap = new Map<number, Module>();
         orgModules.forEach(mod => combinedModulesMap.set(mod.id, mod));
-        projectModules.forEach(mod => combinedModulesMap.set(mod.id, mod)); // Project modules override
+        projectModules.forEach(mod => combinedModulesMap.set(mod.id, mod));
         setModules(Array.from(combinedModulesMap.values()));
 
-        // Fetch all projects in the parent organization (for scope display)
-        const allParentOrgProjects = await getProjects(projData.organization_id, async () => token);
+        const allParentOrgProjects = await getProjects(token, projData.organization_id);
         setProjectsInParentOrg(allParentOrgProjects);
 
       } catch (err: any) {
@@ -194,4 +187,4 @@ export default function ProjectModulesPage() {
       />
     </div>
   );
-} 
+}

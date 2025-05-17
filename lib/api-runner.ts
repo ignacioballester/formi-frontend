@@ -19,28 +19,33 @@ import {
     TerraformState
 } from "./generated-api/runner";
 
-// --- Configure and Instantiate Runner API Clients ---
-const runnerApiConfig = new RunnerConfiguration({
-    basePath: RUNNER_API_BASE_URL,
-    accessToken: async () => {
-        const token = await getServerToken();
-        if (!token) {
-            console.error("[Runner API Client Cfg] getServerToken returned null or undefined. Throwing TokenRefreshFailedError.");
-            throw new TokenRefreshFailedError("Failed to obtain a token for Runner API call.");
-        }
-        return token;
-    }
-});
+// --- Export types for use in UI components ---
+export type {
+    Run,
+    DispatchRunRequest,
+    TerraformState
+};
 
-const runServiceClient = new RunServiceApi(runnerApiConfig);
-const tfStateServiceClient = new TfStateServiceApi(runnerApiConfig);
+// No global runnerApiConfig or client instantiations that use getServerToken by default
+
+// --- Helper to create a configured API client for Runner API ---
+const createRunnerApiClient = <T extends { new(config: RunnerConfiguration): InstanceType<T> }>(
+    ApiClientClass: T,
+    token: string
+): InstanceType<T> => {
+    const config = new RunnerConfiguration({
+        basePath: RUNNER_API_BASE_URL,
+        accessToken: async () => token, // Use the passed token
+    });
+    return new ApiClientClass(config);
+};
 
 // --- Runner API: RunService Functions ---
-// Note: getRuns does not take projectId directly. Filtering would need to be client-side or API needs enhancement.
-export const getRunnerRuns = async (): Promise<Run[]> => {
+export const getRunnerRuns = async (token: string /* projectId: number - API does not take projectId directly */): Promise<Run[]> => {
+    const client = createRunnerApiClient(RunServiceApi, token);
     try {
-        const response = await runServiceClient.getRuns();
-        return response.data || []; // Ensure an array is returned
+        const response = await client.getRuns(); // getRuns does not take projectId
+        return response.data || []; // Assuming response.data is directly Run[]
     } catch (error: any) {
         console.error(`[getRunnerRuns] Error:`, error.message || error);
         if (error.response) throw new Error(error.response.data?.error || `Failed to get runs: ${error.response.status}`);
@@ -48,12 +53,11 @@ export const getRunnerRuns = async (): Promise<Run[]> => {
     }
 };
 
-export const getRunnerRunById = async (id: number): Promise<Run> => {
+export const getRunnerRunById = async (token: string, id: number): Promise<Run> => {
+    const client = createRunnerApiClient(RunServiceApi, token);
     try {
-        const response = await runServiceClient.getRunById(id);
-        // The generated client directly returns Run or throws, so direct access to response.data is fine.
-        // No need for explicit !response.data.run check as with previous assumed structure.
-        return response.data;
+        const response = await client.getRunById(id);
+        return response.data; // Assuming response.data is directly Run
     } catch (error: any) {
         console.error(`[getRunnerRunById id:${id}] Error:`, error.message || error);
         if (error.response) throw new Error(error.response.data?.error || `Failed to get run ${id}: ${error.response.status}`);
@@ -61,13 +65,11 @@ export const getRunnerRunById = async (id: number): Promise<Run> => {
     }
 };
 
-// Changed RunCreate to DispatchRunRequest as per generated API
-export const createRunnerRun = async (runRequest: DispatchRunRequest): Promise<Run> => {
+export const createRunnerRun = async (token: string, runRequest: DispatchRunRequest): Promise<Run> => {
+    const client = createRunnerApiClient(RunServiceApi, token);
     try {
-        // The dispatchRun method expects DispatchRunRequest directly as its payload.
-        const response = await runServiceClient.dispatchRun(runRequest);
-        // Similar to getRunById, successful response.data is the Run object.
-        return response.data;
+        const response = await client.dispatchRun(runRequest);
+        return response.data; // Assuming response.data is directly Run
     } catch (error: any) {
         console.error(`[createRunnerRun for deploymentId:${runRequest.deploymentId}] Error:`, error.message || error);
         if (error.response) throw new Error(error.response.data?.error || `Failed to create run: ${error.response.status}`);
@@ -75,11 +77,11 @@ export const createRunnerRun = async (runRequest: DispatchRunRequest): Promise<R
     }
 };
 
-// getRunLogs returns a string, not RunLog[]
-export const getRunLogs = async (runId: number): Promise<string> => {
+export const getRunLogs = async (token: string, runId: number): Promise<string> => {
+    const client = createRunnerApiClient(RunServiceApi, token);
     try {
-        const response = await runServiceClient.getRunLogs(runId);
-        return response.data || ""; // Ensure a string is returned
+        const response = await client.getRunLogs(runId);
+        return response.data || "";
     } catch (error: any) {
         console.error(`[getRunLogs for runId:${runId}] Error:`, error.message || error);
         if (error.response) throw new Error(error.response.data?.error || `Failed to get run logs: ${error.response.status}`);
@@ -94,9 +96,10 @@ export const getRunLogs = async (runId: number): Promise<string> => {
  * @param deploymentId The ID of the deployment.
  * @returns A promise that resolves to the Terraform state representation.
  */
-export const getTfState = async (deploymentId: number): Promise<TerraformState> => {
+export const getTfState = async (token: string, deploymentId: number): Promise<TerraformState> => {
+    const client = createRunnerApiClient(TfStateServiceApi, token);
     try {
-        const response = await tfStateServiceClient.getTfStateByDeploymentId(deploymentId);
+        const response = await client.getTfStateByDeploymentId(deploymentId);
         return response.data;
     } catch (error: any) {
         console.error(`[getTfState for deploymentId:${deploymentId}] Error:`, error.message || error);
@@ -116,11 +119,10 @@ export const getTfState = async (deploymentId: number): Promise<TerraformState> 
  * @param stateDataString The Terraform state data as a string.
  * @returns A promise that resolves when the state is successfully updated (response body is void for storeTfState).
  */
-export const updateTfState = async (deploymentId: number, stateDataString: string): Promise<void> => {
+export const updateTfState = async (token: string, deploymentId: number, stateDataString: string): Promise<void> => {
+    const client = createRunnerApiClient(TfStateServiceApi, token);
     try {
-        // storeTfState expects the state data as a raw string in the body
-        await tfStateServiceClient.storeTfState(deploymentId, stateDataString);
-        // storeTfState returns void, so no data to return from response.data
+        await client.storeTfState(deploymentId, stateDataString);
     } catch (error: any) {
         console.error(`[updateTfState for deploymentId:${deploymentId}] Error:`, error.message || error);
         if (error.response) throw new Error(error.response.data?.error || `Failed to update Terraform state: ${error.response.status}`);

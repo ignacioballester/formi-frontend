@@ -52,21 +52,19 @@ export default function NewProjectModulePage() {
         try {
           let proj = contextProject;
           if (!proj || proj.id.toString() !== projectId) {
-            proj = await getProject(Number(projectId), async () => token);
-            setCurrentProject(proj);
-            setContextSelectedProject(proj);
+            proj = await getProject(token, Number(projectId));
           }
           if (!proj) throw new Error("Project not found.");
-          setCurrentProject(proj); // Ensure state is updated
+          setCurrentProject(proj);
+          setContextSelectedProject(proj);
 
           let org = contextOrg;
           if ((!org || org.id !== proj.organization_id) && proj.organization_id) {
-            org = await getOrganization(proj.organization_id, async () => token);
-            setParentOrg(org);
-            setContextSelectedOrg(org);
+            org = await getOrganization(token, proj.organization_id);
           }
           if (!org && proj.organization_id) throw new Error ("Parent organization not found.");
-          setParentOrg(org); // Ensure state is updated
+          setParentOrg(org);
+          setContextSelectedOrg(org);
 
         } catch (err: any) {
           console.error("Error loading project/org details:", err);

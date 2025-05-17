@@ -116,7 +116,7 @@ export default function NewProjectDeploymentPage() {
         try {
           let proj = contextProject;
           if (!proj || proj.id.toString() !== projectId) {
-            proj = await getProject(Number(projectId), async () => token);
+            proj = await getProject(token, Number(projectId));
           }
           if (!proj) throw new Error("Project not found.");
           setCurrentProject(proj);
@@ -124,7 +124,7 @@ export default function NewProjectDeploymentPage() {
 
           let org = contextOrg;
           if ((!org || org.id !== proj.organization_id) && proj.organization_id) {
-            org = await getOrganization(proj.organization_id, async () => token);
+            org = await getOrganization(token, proj.organization_id);
           }
           if (!org && proj.organization_id) throw new Error("Parent organization not found.");
           setParentOrg(org);
@@ -133,12 +133,12 @@ export default function NewProjectDeploymentPage() {
           if (!proj.organization_id) throw new Error("Project is missing parent organization ID.");
 
           const [projectModules, orgModules] = await Promise.all([
-            getModules({ project_id: proj.id }, async () => token),
-            getModules({ organization_id: proj.organization_id }, async () => token)
+            getModules(token, { projectId: proj.id }),
+            getModules(token, { organizationId: proj.organization_id })
           ]);
           const combined = new Map<number, Module>();
           orgModules.forEach(m => combined.set(m.id, m));
-          projectModules.forEach(m => combined.set(m.id, m)); // Project modules take precedence
+          projectModules.forEach(m => combined.set(m.id, m));
           setAvailableModules(Array.from(combined.values()));
 
         } catch (err: any) {
@@ -160,15 +160,15 @@ export default function NewProjectDeploymentPage() {
     if (!selectedModuleId) {
       setSelectedModuleDetails(null);
       setRjsfSchema(null);
-      setInitialFormData({}); // Clear initial data
-      setUiSchema({});      // Clear uiSchema
+      setInitialFormData({});
+      setUiSchema({});
       return;
     }
     setIsLoadingModuleDetails(true);
     setError(null);
     getClientToken().then(async token => {
       try {
-        const modDetails = await getModule(Number(selectedModuleId), async () => token);
+        const modDetails = await getModule(token, Number(selectedModuleId));
         setSelectedModuleDetails(modDetails);
         
         const schema = modDetails.terraform_properties?.tfvars_json_schema;
@@ -176,16 +176,11 @@ export default function NewProjectDeploymentPage() {
           setRjsfSchema(schema);
           const initialData = getInitialFormData(schema, modDetails.module_config?.variables);
           setInitialFormData(initialData);
-          // --- REMOVE ui:help generation ---
-          // The theme will render schema descriptions automatically.
-          // If further UI customization is needed, uiSchema can be built differently.
-          setUiSchema({}); // Reset uiSchema
-          // --- END REMOVAL ---
-
+          setUiSchema({});
         } else {
           setRjsfSchema(null);
-          setInitialFormData({}); // Clear initial data
-          setUiSchema({});      // Clear uiSchema
+          setInitialFormData({});
+          setUiSchema({});
           setError("Selected module does not have a valid TFVars JSON schema.");
           toast({title: "Schema Error", description: "Module TFVars schema is missing or invalid.", variant: "default"});
         }
@@ -217,24 +212,33 @@ export default function NewProjectDeploymentPage() {
       const token = await getClientToken();
       const moduleConfig: ModuleConfig | undefined = selectedModuleDetails.module_config;
 
-      // Prepare secrets input
       const secrets: SecretIdentifier[] = moduleConfig?.credentials?.map((credConfig: any) => {
-        // This is a simplified placeholder.
-        // In a real scenario, you'd need UI to select actual secrets based on credConfig.options
-        // For now, if options exist, pick the first one, or a placeholder.
         if (credConfig.options && credConfig.options.length > 0) {
           return credConfig.options[0]; 
         }
-        // Fallback if no options - this will likely fail if the secret is required by the backend
         return { name: `placeholder-secret-${credConfig.type}`, type: credConfig.type, organization_id: parentOrg!.id };
       }) || [];
       
-      // Prepare deployment_variable_inputs
-      const deploymentVariables: DeploymentVariableInput[] = moduleConfig?.deployment_variables?.map(depVar => ({
-        name: depVar.name,
-        input: depVar.default || "" // Use default or empty string. User might need to override.
-      })) || [];
-
+      const deploymentVariables: DeploymentVariableInput[] = moduleConfig?.deployment_variables?.map((depVar: {name: string, default?: any}) => {
+        let inputValue = "";
+        if (depVar.default !== undefined && depVar.default !== null) {
+          if (typeof depVar.default === 'string') {
+            inputValue = depVar.default;
+          } else if (typeof depVar.default === 'number' || typeof depVar.default === 'boolean') {
+            inputValue = String(depVar.default);
+          } else {
+            // For objects: if you need to pass them as JSON strings
+            // inputValue = JSON.stringify(depVar.default);
+            // For now, if it's not a simple primitive, it results in an empty string for the input.
+            // This matches the original broader logic of `depVar.default || ""` if default was a non-string primitive.
+            // If default is an object, `String(object)` usually gives `"[object Object]"`, so empty string is often safer unless JSON string is intended.
+          }
+        }
+        return {
+          name: depVar.name,
+          input: inputValue 
+        };
+      }) || [];
 
       const deployInput: DeployModuleInput = {
         module_id: selectedModuleDetails.id,
@@ -246,9 +250,9 @@ export default function NewProjectDeploymentPage() {
         },
       };
 
-      const result = await deployModule(deployInput, async () => token);
-      toast({ title: "Deployment Initiated", description: `Deployment ID: ${result.deployment.id}, Run ID: ${result.run.id}` });
-      router.push(`/projects/${projectId}/deployments/${result.deployment.id}`); // Or to runs page
+      const result = await deployModule(token, deployInput);
+      toast({ title: "Deployment Initiated", description: `Deployment ID: ${result.deployment?.id}, Run ID: ${result.run?.id}` });
+      router.push(`/projects/${projectId}/deployments/${result.deployment?.id}`);
     } catch (err: any) {
       setError(err.message);
       toast({ title: "Deployment Failed", description: err.message, variant: "destructive" });
@@ -393,7 +397,6 @@ export default function NewProjectDeploymentPage() {
                   <Info className="h-4 w-4" />
                   <AlertTitle>Secrets Configuration Note</AlertTitle>
                   <AlertDescription>
-                    {/* Add type annotation for 'c' */}
                     This module requires secrets: {selectedModuleDetails.module_config.credentials.map((c: {type: string}) => c.type).join(', ')}. 
                     Currently, placeholders are used. Proper secret selection UI will be needed.
                   </AlertDescription>

@@ -53,7 +53,7 @@ export default function NewRepositoryPageProject() {
         const token = await getClientToken();
         let currentProject = contextProject;
         if (!currentProject || currentProject.id.toString() !== projectId) {
-          currentProject = await getProject(Number(projectId), async () => token);
+          currentProject = await getProject(token, Number(projectId));
           setContextSelectedProject(currentProject); // Update context
         }
         if (!currentProject) throw new Error("Failed to load project details.");
@@ -61,7 +61,7 @@ export default function NewRepositoryPageProject() {
 
         let currentParentOrg = contextOrg;
         if (!currentParentOrg || currentParentOrg.id !== currentProject.organization_id) {
-          currentParentOrg = await getOrganization(currentProject.organization_id, async () => token);
+          currentParentOrg = await getOrganization(token, currentProject.organization_id);
           setContextSelectedOrg(currentParentOrg); // Update context
         }
         if (!currentParentOrg) throw new Error("Failed to load parent organization for the project.");

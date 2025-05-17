@@ -72,7 +72,7 @@ export default function NewGlobalProjectPage() {
       setIsLoadingOrganizations(true);
       try {
         const token = await getClientToken();
-        const orgs = await getOrganizations(async () => token);
+        const orgs = await getOrganizations(token);
         setOrganizations(orgs);
       } catch (error: any) {
         console.error("Error fetching organizations:", error);
@@ -92,14 +92,15 @@ export default function NewGlobalProjectPage() {
     }
     setIsSubmitting(true);
     try {
+      const token = session.accessToken;
       const projectData: CreateProjectInput = {
         name: data.name,
         organization_id: Number.parseInt(data.organizationId),
       };
-      const newProject = await createProject(projectData, getClientToken);
+      const newProject = await createProject(token, projectData);
       toast({ title: "Project Created", description: `${newProject.name} has been successfully created.` });
-      router.push(`/organizations/${data.organizationId}/projects`); // Navigate to the org-specific project list
-      router.refresh(); 
+      router.push(`/organizations/${data.organizationId}/projects`);
+      router.refresh();
     } catch (error) {
       console.error("Error creating project:", error);
       toast({ title: "Error Creating Project", description: error instanceof Error ? error.message : "An unexpected error occurred", variant: "destructive" });

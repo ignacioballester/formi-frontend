@@ -31,18 +31,19 @@ export default function GroupsPage() {
 
   useEffect(() => {
     async function fetchGroups() {
-      if (sessionStatus === "loading" || !session?.accessToken) {
-        if (sessionStatus !== "loading") {
-          setLoading(false)
-          setError("Authentication token not available.")
-        }
-        return
-      }
-
+      if (sessionStatus === "loading") return
+      setLoading(true)
       try {
-        setLoading(true)
+        // await update(); // Removed proactive token refresh
+        // Ensure session and accessToken are valid
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+          setError("User not authenticated or session token unavailable.")
+          setGroups([])
+          setLoading(false)
+          return
+        }
         setError(null)
-        const groupsData = await getIamGroups()
+        const groupsData = await getIamGroups(session.accessToken)
         setGroups(groupsData)
       } catch (err: any) {
         console.error("Error fetching groups:", err)
@@ -53,15 +54,16 @@ export default function GroupsPage() {
       }
     }
 
-    if (sessionStatus === "authenticated" && session?.accessToken) {
+    if (sessionStatus === "authenticated") {
       fetchGroups()
     } else if (sessionStatus === "unauthenticated") {
       setLoading(false)
       setError("User is not authenticated.")
-    } else {
+      setGroups([])
+    } else { // sessionStatus is "loading"
       setLoading(true)
     }
-  }, [session, sessionStatus])
+  }, [sessionStatus, session])
 
   const filteredGroups = groups.filter((group) => group.name.toLowerCase().includes(searchQuery.toLowerCase()))
 

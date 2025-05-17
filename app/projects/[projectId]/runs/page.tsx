@@ -14,13 +14,15 @@ import { useOrganization } from '@/contexts/organization-context';
 import {
   getProject,
   getOrganization,
-  getRunnerRuns,
   getDeployments,
   type Project,
   type Organization,
-  type RunnerRun,
   type Deployment,
 } from '@/lib/api-core';
+import {
+  getRunnerRuns,
+  type Run as RunnerRun
+} from '@/lib/api-runner';
 
 export default function ProjectRunsPage() {
   const params = useParams<{ projectId: string }>();
@@ -58,7 +60,7 @@ export default function ProjectRunsPage() {
 
       let proj = contextProject;
       if (!proj || proj.id.toString() !== projectId) {
-        proj = await getProject(numericProjectId, async () => token);
+        proj = await getProject(token, numericProjectId);
       }
       if (!proj) throw new Error("Project not found.");
       setCurrentProject(proj);
@@ -66,13 +68,13 @@ export default function ProjectRunsPage() {
 
       let org = contextOrg;
       if ((!org || org.id !== proj.organization_id) && proj.organization_id) {
-        org = await getOrganization(proj.organization_id, async () => token);
+        org = await getOrganization(token, proj.organization_id);
       }
       if (!org && proj.organization_id) throw new Error("Parent organization not found.");
       setParentOrg(org);
       setContextSelectedOrg(org);
 
-      const projectDeployments: Deployment[] = await getDeployments(numericProjectId, undefined, async () => token);
+      const projectDeployments: Deployment[] = await getDeployments(token, numericProjectId, undefined);
       const projectDeploymentIds = new Set(projectDeployments.map(d => d.id));
 
       if (projectDeploymentIds.size === 0) {
@@ -86,9 +88,9 @@ export default function ProjectRunsPage() {
         return;
       }
 
-      const allRuns: RunnerRun[] = await getRunnerRuns(async () => token);
+      const allRuns: RunnerRun[] = await getRunnerRuns(token);
 
-      const filteredRuns = allRuns.filter(run => projectDeploymentIds.has(run.deployment_id));
+      const filteredRuns = allRuns.filter(run => run.deployment_id !== undefined && projectDeploymentIds.has(run.deployment_id));
       setProjectRuns(filteredRuns);
 
     } catch (err: any) {

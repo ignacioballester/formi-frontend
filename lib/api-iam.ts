@@ -1,7 +1,7 @@
 // Removed import { getAuthToken } from './auth';
 
 // Consolidate to a single IAM_API_BASE_URL
-const IAM_API_BASE_URL = `${process.env.NEXT_PUBLIC_IAM_API_URL || "http://localhost:8081"}`; 
+const IAM_API_BASE_URL = `${process.env.NEXT_PUBLIC_IAM_API_URL || "http://localhost:8081"}`;
 
 // --- Custom Error for Token Expiry from IAM (can be re-evaluated if generic ApiTokenExpiredError is preferred) ---
 export class TokenExpiredIAMError extends Error {
@@ -12,11 +12,12 @@ export class TokenExpiredIAMError extends Error {
 }
 
 // --- Import token getter and error types ---
-import { getServerToken, TokenRefreshFailedError, ApiTokenExpiredError } from "./api-retry"; // GetTokenFn is not directly used here anymore but kept for context if other fns need it
+// getServerToken will NOT be used by default in client-facing wrappers anymore.
+// It can be used by Server Actions if they call these wrappers.
+import { getServerToken, TokenRefreshFailedError, ApiTokenExpiredError } from "./api-retry";
+import type { RawAxiosRequestConfig } from 'axios'; // Keep for potential direct axios calls if needed, though primary change is client instantiation
 
 // --- Import generated IAM client parts ---
-// We import all necessary classes and types from the generated client.
-// Note: Specific API classes like UsersApi, GroupsApi, etc., would be imported here if we were re-implementing those functionalities.
 import {
     Configuration as IAMConfiguration,
     AuthorizationApi,
@@ -25,131 +26,113 @@ import {
     RoleAssignmentsApi,
     RolesApi,
     UsersApi,
-    // DTOs / Types
+    // DTOs / Types that are used in function signatures or exported
     AuthorizationCheckInput,
-    AuthorizationCheckResult,
+    AuthorizationCheckResult, // Though typically not returned by wrappers, good to have if needed
     CreateResourceInput,
-    CreateResourceInputResourceTypeEnum,
     Group,
-    ModelError, // Though typically not returned directly by successful wrapper calls
-    PermissionMap,
     Resource,
-    ResourceAttributes,
     Role,
-    RoleResourceTypeEnum,
     RoleAssignment,
-    RoleAssignmentPrincipalTypeEnum,
     User,
-    GetRoleAssignmentsOnPrincipalPrincipalTypeEnum, // Enum for getRoleAssignmentsOnPrincipal
-    GetRolesByResourceTypeResourceTypeEnum, // Enum for getRolesByResourceType
-} from "./generated-api/iam";
-
-// --- Export types for use in UI components ---
-export type {
-    RoleAssignment, // Used in settings page and actions
-    Role,           // Used in settings page (as IAMRole)
-    User,           // Used in settings page (as IAMUser) and users page
-    Group,          // Used in settings page (as IAMGroup) and groups page
-    // Export enums if they are needed directly by consuming code
+    // Enums used in function signatures or exported
     CreateResourceInputResourceTypeEnum,
     RoleResourceTypeEnum,
     RoleAssignmentPrincipalTypeEnum,
     GetRoleAssignmentsOnPrincipalPrincipalTypeEnum,
     GetRolesByResourceTypeResourceTypeEnum,
-    // Export DTOs if forms need to construct them directly before passing to actions/api functions
-    AuthorizationCheckInput, // Example, if a form built this directly
-    CreateResourceInput,     // Example
-    ResourceAttributes       // Example
+    // Other DTOs if they become part of function signatures or are directly exported
+    ResourceAttributes,
+    PermissionMap,
+    ModelError // For completeness, though wrappers usually throw or return specific data
+} from "./generated-api/iam";
+
+// --- Export types for use in UI components ---
+export type {
+    RoleAssignment,
+    Role,
+    User,
+    Group,
+    CreateResourceInputResourceTypeEnum,
+    RoleResourceTypeEnum,
+    RoleAssignmentPrincipalTypeEnum,
+    GetRoleAssignmentsOnPrincipalPrincipalTypeEnum,
+    GetRolesByResourceTypeResourceTypeEnum,
+    AuthorizationCheckInput, // If forms build this directly
+    CreateResourceInput,     // If forms build this directly
+    ResourceAttributes,      // If forms build this or it's returned directly
+    PermissionMap            // If forms build this or it's returned directly
 };
 
-// --- Configure and instantiate IAM API clients ---
-const iamConfig = new IAMConfiguration({
-    basePath: IAM_API_BASE_URL,
-    accessToken: async () => {
-        const token = await getServerToken();
-        if (!token) {
-            console.error("[IAM Client Cfg] getServerToken returned null or undefined. Throwing TokenRefreshFailedError.");
-            throw new TokenRefreshFailedError("Failed to obtain a token for IAM API call (getServerToken returned null/undefined).");
-        }
-        return token;
-    }
-});
+// --- IAM API Client Configuration (WITHOUT default accessToken provider) ---
+// This base configuration can be used by each function to then add the specific token.
+// Alternatively, each function can construct its own full config.
+// For clarity, each function will construct its own to ensure token is scoped per call.
 
-const authorizationApiClient = new AuthorizationApi(iamConfig);
-const groupsApiClient = new GroupsApi(iamConfig);
-const resourcesApiClient = new ResourcesApi(iamConfig);
-const roleAssignmentsApiClient = new RoleAssignmentsApi(iamConfig);
-const rolesApiClient = new RolesApi(iamConfig);
-const usersApiClient = new UsersApi(iamConfig);
+// No global client instantiations here anymore, as they would lack dynamic token.
+// const authorizationApiClient = new AuthorizationApi(iamConfig);
+// const groupsApiClient = new GroupsApi(iamConfig);
+// etc.
 
-// --- Updated Authorization functions using generated client ---
+// --- Helper to create a configured API client ---
+const createApiClient = <T extends { new(config: IAMConfiguration): InstanceType<T> }>(
+    ApiClientClass: T,
+    token: string
+): InstanceType<T> => {
+    const config = new IAMConfiguration({
+        basePath: IAM_API_BASE_URL,
+        accessToken: async () => token, // Use the passed token
+    });
+    return new ApiClientClass(config);
+};
+
+
+// --- Authorization API Functions ---
 export async function isUserAuthorized(
+  token: string,
   resourceName: string,
   scopes?: string[],
 ): Promise<boolean> {
-  console.log(`[isUserAuthorized] Checking auth for resource: ${resourceName}, scopes: ${scopes?.join(', ') || 'none'} using generated IAM client.`);
-  
-  // The AuthorizationCheckInput type is imported from the generated client
+  console.log(`[isUserAuthorized] Checking auth for resource: ${resourceName}, scopes: ${scopes?.join(', ') || 'none'}`);
   const authCheckInput: AuthorizationCheckInput = {
     resource_name: resourceName,
-    scopes: scopes || [], // Ensure scopes is an array, as expected by the generated type
+    scopes: scopes || [],
   };
-
+  const client = createApiClient(AuthorizationApi, token);
   try {
-    // Call the generated client method. It returns an AxiosPromise.
-    // Upon successful (2xx) resolution, the actual data is in `response.data`.
-    const response = await authorizationApiClient.isUserAuthorized(authCheckInput);
-    
-    // The AuthorizationCheckResult (response.data) type has { authorized: boolean; }
+    const response = await client.isUserAuthorized(authCheckInput);
     if (response.status === 200 && response.data && typeof response.data.authorized === 'boolean') {
-        console.log("[isUserAuthorized] IAM check successful. Authorized:", response.data.authorized);
         return response.data.authorized;
     } else {
-        // This path should ideally not be reached if the API and client behave as expected
-        // (i.e., client throws for non-2xx or server sends malformed 2xx response).
         console.warn("[isUserAuthorized] IAM check response status not 200 or data malformed. Assuming not authorized.", response);
         return false;
     }
   } catch (error: any) {
     console.error(`[isUserAuthorized] Error during IAM authorization check: ${error.message || error}`);
-    
-    // Axios errors (which the generated client likely uses) often have a `response` property
     if (error.response) {
         console.error("[isUserAuthorized] Error response status:", error.response.status);
         console.error("[isUserAuthorized] Error response data:", error.response.data);
-        // A 403 Forbidden status specifically means not authorized.
         if (error.response.status === 403) {
-            console.log("[isUserAuthorized] Received 403 Forbidden, considered not authorized.");
             return false;
         }
     }
-    
-    // Handle specific errors like token refresh failure if it bubbles up from the accessToken provider function
-    if (error instanceof TokenRefreshFailedError) {
-        console.error(`[isUserAuthorized] Token refresh failed during IAM check: ${error.message}`);
-    } else if (error instanceof ApiTokenExpiredError) {
-        // This might be relevant if the token somehow expires between refresh and use, 
-        // or if the generated client throws this type of error itself.
-        console.error(`[isUserAuthorized] Token deemed expired during IAM check: ${error.message}`);
-    } else if (error instanceof TokenExpiredIAMError) {
-        // If we still want to use our custom IAM-specific expiry error.
-        console.error(`[isUserAuthorized] Custom IAM Token Expired Error: ${error.message}`);
+    if (error instanceof TokenRefreshFailedError || error instanceof ApiTokenExpiredError || error instanceof TokenExpiredIAMError) {
+        console.error(`[isUserAuthorized] Token related error during IAM check: ${error.message}`);
     }
-    
-    // For any other errors (network issues, unexpected server errors, etc.), default to not authorized.
-    return false; 
+    return false;
   }
 }
 
-export async function checkEnterpriseUpdatePermission(): Promise<boolean> {
-    const enterpriseResourceName = 'enterprise-1'; // Consider making this a configurable constant
-    return isUserAuthorized(enterpriseResourceName, ['update_enterprise']);
+export async function checkEnterpriseUpdatePermission(token: string): Promise<boolean> {
+    const enterpriseResourceName = 'enterprise-1';
+    return isUserAuthorized(token, enterpriseResourceName, ['update_enterprise']);
 }
 
 // --- Groups API Functions ---
-export const getIamGroups = async (): Promise<Group[]> => {
+export const getIamGroups = async (token: string): Promise<Group[]> => {
+  const client = createApiClient(GroupsApi, token);
   try {
-    const response = await groupsApiClient.getGroups();
+    const response = await client.getGroups();
     return response.data;
   } catch (error: any) {
     console.error("[getIamGroups] Error:", error.message || error);
@@ -158,9 +141,10 @@ export const getIamGroups = async (): Promise<Group[]> => {
   }
 };
 
-export const getIamGroupById = async (id: string): Promise<Group> => {
+export const getIamGroupById = async (token: string, id: string): Promise<Group> => {
+  const client = createApiClient(GroupsApi, token);
   try {
-    const response = await groupsApiClient.getGroupById(id);
+    const response = await client.getGroupById(id);
     return response.data;
   } catch (error: any) {
     console.error(`[getIamGroupById id:${id}] Error:`, error.message || error);
@@ -169,9 +153,10 @@ export const getIamGroupById = async (id: string): Promise<Group> => {
   }
 };
 
-export const getIamGroupByName = async (name: string): Promise<Group> => {
+export const getIamGroupByName = async (token: string, name: string): Promise<Group> => {
+  const client = createApiClient(GroupsApi, token);
   try {
-    const response = await groupsApiClient.getGroupByName(name);
+    const response = await client.getGroupByName(name);
     return response.data;
   } catch (error: any) {
     console.error(`[getIamGroupByName name:${name}] Error:`, error.message || error);
@@ -181,9 +166,10 @@ export const getIamGroupByName = async (name: string): Promise<Group> => {
 };
 
 // --- Resources API Functions ---
-export const createIamResource = async (createResourceInput: CreateResourceInput): Promise<Resource> => {
+export const createIamResource = async (token: string, createResourceInput: CreateResourceInput): Promise<Resource> => {
+  const client = createApiClient(ResourcesApi, token);
   try {
-    const response = await resourcesApiClient.createResource(createResourceInput);
+    const response = await client.createResource(createResourceInput);
     return response.data;
   } catch (error: any) {
     console.error(`[createIamResource input:${JSON.stringify(createResourceInput)}] Error:`, error.message || error);
@@ -192,9 +178,10 @@ export const createIamResource = async (createResourceInput: CreateResourceInput
   }
 };
 
-export const deleteIamResource = async (resourceName: string): Promise<void> => {
+export const deleteIamResource = async (token: string, resourceName: string): Promise<void> => {
+  const client = createApiClient(ResourcesApi, token);
   try {
-    await resourcesApiClient.deleteResource(resourceName);
+    await client.deleteResource(resourceName);
   } catch (error: any) {
     console.error(`[deleteIamResource name:${resourceName}] Error:`, error.message || error);
     if (error.response) throw new Error(error.response.data?.message || `Failed to delete resource ${resourceName}: ${error.response.status}`);
@@ -202,9 +189,10 @@ export const deleteIamResource = async (resourceName: string): Promise<void> => 
   }
 };
 
-export const getIamResource = async (resourceName: string): Promise<Resource> => {
+export const getIamResource = async (token: string, resourceName: string): Promise<Resource> => {
+  const client = createApiClient(ResourcesApi, token);
   try {
-    const response = await resourcesApiClient.getResource(resourceName);
+    const response = await client.getResource(resourceName);
     return response.data;
   } catch (error: any) {
     console.error(`[getIamResource name:${resourceName}] Error:`, error.message || error);
@@ -213,9 +201,10 @@ export const getIamResource = async (resourceName: string): Promise<Resource> =>
   }
 };
 
-export const updateIamResourceAttributes = async (resourceName: string, resourceAttributes: ResourceAttributes): Promise<void> => {
+export const updateIamResourceAttributes = async (token: string, resourceName: string, resourceAttributes: ResourceAttributes): Promise<void> => {
+  const client = createApiClient(ResourcesApi, token);
   try {
-    await resourcesApiClient.updateResourceAttributes(resourceName, resourceAttributes);
+    await client.updateResourceAttributes(resourceName, resourceAttributes);
   } catch (error: any) {
     console.error(`[updateIamResourceAttributes name:${resourceName}] Error:`, error.message || error);
     if (error.response) throw new Error(error.response.data?.message || `Failed to update resource attributes for ${resourceName}: ${error.response.status}`);
@@ -224,9 +213,10 @@ export const updateIamResourceAttributes = async (resourceName: string, resource
 };
 
 // --- RoleAssignments API Functions ---
-export const createIamRoleAssignment = async (roleAssignment: RoleAssignment): Promise<void> => {
+export const createIamRoleAssignment = async (token: string, roleAssignment: RoleAssignment): Promise<void> => {
+  const client = createApiClient(RoleAssignmentsApi, token);
   try {
-    await roleAssignmentsApiClient.createRoleAssignment(roleAssignment);
+    await client.createRoleAssignment(roleAssignment);
   } catch (error: any) {
     console.error(`[createIamRoleAssignment assignment:${JSON.stringify(roleAssignment)}] Error:`, error.message || error);
     if (error.response) throw new Error(error.response.data?.message || `Failed to create role assignment: ${error.response.status}`);
@@ -234,9 +224,10 @@ export const createIamRoleAssignment = async (roleAssignment: RoleAssignment): P
   }
 };
 
-export const getIamRoleAssignmentsOnPrincipal = async (principalType: GetRoleAssignmentsOnPrincipalPrincipalTypeEnum, principalId: string): Promise<RoleAssignment[]> => {
+export const getIamRoleAssignmentsOnPrincipal = async (token: string, principalType: GetRoleAssignmentsOnPrincipalPrincipalTypeEnum, principalId: string): Promise<RoleAssignment[]> => {
+  const client = createApiClient(RoleAssignmentsApi, token);
   try {
-    const response = await roleAssignmentsApiClient.getRoleAssignmentsOnPrincipal(principalType, principalId);
+    const response = await client.getRoleAssignmentsOnPrincipal(principalType, principalId);
     return response.data;
   } catch (error: any) {
     console.error(`[getIamRoleAssignmentsOnPrincipal type:${principalType}, id:${principalId}] Error:`, error.message || error);
@@ -245,9 +236,10 @@ export const getIamRoleAssignmentsOnPrincipal = async (principalType: GetRoleAss
   }
 };
 
-export const getIamRoleAssignmentsOnResource = async (resourceName: string): Promise<RoleAssignment[]> => {
+export const getIamRoleAssignmentsOnResource = async (token: string, resourceName: string): Promise<RoleAssignment[]> => {
+  const client = createApiClient(RoleAssignmentsApi, token);
   try {
-    const response = await roleAssignmentsApiClient.getRoleAssignmentsOnResource(resourceName);
+    const response = await client.getRoleAssignmentsOnResource(resourceName);
     return response.data;
   } catch (error: any) {
     console.error(`[getIamRoleAssignmentsOnResource name:${resourceName}] Error:`, error.message || error);
@@ -256,9 +248,10 @@ export const getIamRoleAssignmentsOnResource = async (resourceName: string): Pro
   }
 };
 
-export const removeIamRoleAssignment = async (roleAssignment: RoleAssignment): Promise<void> => {
+export const removeIamRoleAssignment = async (token: string, roleAssignment: RoleAssignment): Promise<void> => {
+  const client = createApiClient(RoleAssignmentsApi, token);
   try {
-    await roleAssignmentsApiClient.removeRoleAssignment(roleAssignment);
+    await client.removeRoleAssignment(roleAssignment);
   } catch (error: any) {
     console.error(`[removeIamRoleAssignment assignment:${JSON.stringify(roleAssignment)}] Error:`, error.message || error);
     if (error.response) throw new Error(error.response.data?.message || `Failed to remove role assignment: ${error.response.status}`);
@@ -267,9 +260,10 @@ export const removeIamRoleAssignment = async (roleAssignment: RoleAssignment): P
 };
 
 // --- Roles API Functions ---
-export const getIamRoleByName = async (name: string): Promise<Role> => {
+export const getIamRoleByName = async (token: string, name: string): Promise<Role> => {
+  const client = createApiClient(RolesApi, token);
   try {
-    const response = await rolesApiClient.getRoleByName(name);
+    const response = await client.getRoleByName(name);
     return response.data;
   } catch (error: any) {
     console.error(`[getIamRoleByName name:${name}] Error:`, error.message || error);
@@ -278,9 +272,10 @@ export const getIamRoleByName = async (name: string): Promise<Role> => {
   }
 };
 
-export const getIamRolesByResourceType = async (resourceType: GetRolesByResourceTypeResourceTypeEnum): Promise<Role[]> => {
+export const getIamRolesByResourceType = async (token: string, resourceType: GetRolesByResourceTypeResourceTypeEnum): Promise<Role[]> => {
+  const client = createApiClient(RolesApi, token);
   try {
-    const response = await rolesApiClient.getRolesByResourceType(resourceType);
+    const response = await client.getRolesByResourceType(resourceType);
     return response.data;
   } catch (error: any) {
     console.error(`[getIamRolesByResourceType type:${resourceType}] Error:`, error.message || error);
@@ -290,9 +285,10 @@ export const getIamRolesByResourceType = async (resourceType: GetRolesByResource
 };
 
 // --- Users API Functions ---
-export const getIamUsers = async (): Promise<User[]> => {
+export const getIamUsers = async (token: string): Promise<User[]> => {
+  const client = createApiClient(UsersApi, token);
   try {
-    const response = await usersApiClient.getUsers();
+    const response = await client.getUsers();
     return response.data;
   } catch (error: any) {
     console.error("[getIamUsers] Error:", error.message || error);
@@ -301,9 +297,10 @@ export const getIamUsers = async (): Promise<User[]> => {
   }
 };
 
-export const getIamUserById = async (id: string): Promise<User> => {
+export const getIamUserById = async (token: string, id: string): Promise<User> => {
+  const client = createApiClient(UsersApi, token);
   try {
-    const response = await usersApiClient.getUserById(id);
+    const response = await client.getUserById(id);
     return response.data;
   } catch (error: any) {
     console.error(`[getIamUserById id:${id}] Error:`, error.message || error);
@@ -312,9 +309,10 @@ export const getIamUserById = async (id: string): Promise<User> => {
   }
 };
 
-export const getIamUserByUsername = async (username: string): Promise<User> => {
+export const getIamUserByUsername = async (token: string, username: string): Promise<User> => {
+  const client = createApiClient(UsersApi, token);
   try {
-    const response = await usersApiClient.getUserByUsername(username);
+    const response = await client.getUserByUsername(username);
     return response.data;
   } catch (error: any) {
     console.error(`[getIamUserByUsername username:${username}] Error:`, error.message || error);

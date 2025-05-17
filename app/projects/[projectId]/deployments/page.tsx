@@ -69,7 +69,7 @@ export default function ProjectDeploymentsPage() {
 
         let projData = contextProject;
         if (!projData || projData.id.toString() !== projectId) {
-            projData = await getProject(numericProjectId, async () => token);
+            projData = await getProject(token, numericProjectId);
         }
         if (!projData) throw new Error ("Project not found.");
         setCurrentProject(projData);
@@ -77,7 +77,7 @@ export default function ProjectDeploymentsPage() {
 
         let orgData = contextOrg;
         if ((!orgData || orgData.id !== projData.organization_id) && projData.organization_id) {
-            orgData = await apiGetOrganization(projData.organization_id, async () => token);
+            orgData = await apiGetOrganization(token, projData.organization_id);
         }
         if (!orgData && projData.organization_id) throw new Error ("Parent organization not found for project.");
         setParentOrg(orgData);
@@ -85,17 +85,15 @@ export default function ProjectDeploymentsPage() {
         
         if (!projData.organization_id) throw new Error ("Project is missing parent organization ID.");
 
-        // Fetch deployments for the current project
-        const fetchedDeployments = await getDeployments(numericProjectId, undefined, async () => token);
+        const fetchedDeployments = await getDeployments(token, numericProjectId, undefined);
         setDeployments(fetchedDeployments);
 
-        // Fetch modules for the project AND organization to display names
-        const projectModules = await getModules({ project_id: numericProjectId }, async () => token);
-        const orgModules = await getModules({ organization_id: projData.organization_id }, async () => token);
+        const projectModules = await getModules(token, { projectId: numericProjectId });
+        const orgModules = await getModules(token, { organizationId: projData.organization_id });
         
         const combinedModulesMap = new Map<number, Module>();
         orgModules.forEach(mod => combinedModulesMap.set(mod.id, mod));
-        projectModules.forEach(mod => combinedModulesMap.set(mod.id, mod)); // Project modules can override org ones if IDs clash (though unlikely for different module entities)
+        projectModules.forEach(mod => combinedModulesMap.set(mod.id, mod));
         setModulesInOrgAndProject(Array.from(combinedModulesMap.values()));
 
       } catch (err: any) {

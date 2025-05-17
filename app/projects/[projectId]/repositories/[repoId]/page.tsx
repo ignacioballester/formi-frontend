@@ -10,8 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { useOrganization } from "@/contexts/organization-context";
-import { type Project, type Repository, type Organization, getProject, getOrganization } from "@/lib/api-core";
-import { getRepositoryAction } from "@/app/actions/repositories/actions";
+import { type Project, type Repository, type Organization, getProject, getOrganization, getRepository } from "@/lib/api-core";
 import { EditRepositoryForm } from "@/components/repositories/edit-repository-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -56,16 +55,16 @@ export default function EditRepositoryPageProject() {
       try {
         const token = await getClientToken();
         
-        // Fetch Repository
-        const repoResult = await getRepositoryAction(Number(repositoryId), token);
-        if (!repoResult.success || !repoResult.data) throw new Error(repoResult.error || "Failed to load repository details.");
-        setRepository(repoResult.data.repository);
-        const fetchedRepoOrgId = repoResult.data.repository.organization_id;
+        // Fetch Repository directly using the API function
+        const repoResult = await getRepository(token, Number(repositoryId));
+        if (!repoResult || !repoResult.repository) throw new Error("Failed to load repository details.");
+        setRepository(repoResult.repository);
+        const fetchedRepoOrgId = repoResult.repository.organization_id;
 
         // Fetch Project
         let currentProject = contextProject;
         if (!currentProject || currentProject.id.toString() !== projectId) {
-          currentProject = await getProject(Number(projectId), async () => token);
+          currentProject = await getProject(token, Number(projectId));
           setContextSelectedProject(currentProject); // Update context
         }
         if (!currentProject) throw new Error("Failed to load project details.");
@@ -81,7 +80,7 @@ export default function EditRepositoryPageProject() {
         // Fetch Parent Organization (using repo's org_id as source of truth for the repo itself)
         let currentParentOrg = contextOrg;
         if (!currentParentOrg || currentParentOrg.id !== fetchedRepoOrgId) {
-          currentParentOrg = await getOrganization(fetchedRepoOrgId, async () => token);
+          currentParentOrg = await getOrganization(token, fetchedRepoOrgId);
           // We set this as parentOrganization for display, but might not update context if it conflicts with project's context org
           // If the project context org is already set and matches project.organization_id, we might prefer that one for overall project context.
           // However, EditRepositoryForm needs the org the repo *actually* belongs to.

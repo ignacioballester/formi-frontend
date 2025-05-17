@@ -68,8 +68,7 @@ export default function EditProjectModulePage() {
 
   const fetchPageData = useCallback(async (token: string) => {
     // 1. Fetch Module
-    const moduleResult = await getModule(Number(moduleId), async () => token);
-    const fetchedModule = moduleResult;
+    const fetchedModule = await getModule(token, Number(moduleId));
     setCurrentModule(fetchedModule);
     setEditModuleConfig(fetchedModule.module_config || {});
     setEditConfigFilePath(fetchedModule.module_config?.config_file_path);
@@ -78,7 +77,7 @@ export default function EditProjectModulePage() {
     // 2. Fetch Project (if not in context or different)
     let proj = contextProject;
     if (!proj || proj.id.toString() !== projectId) {
-      proj = await getProject(Number(projectId), async () => token);
+      proj = await getProject(token, Number(projectId));
     }
     if (!proj) throw new Error("Project not found.");
     setCurrentProject(proj);
@@ -87,7 +86,7 @@ export default function EditProjectModulePage() {
     // 3. Fetch Parent Organization (if not in context or different)
     let org = contextOrg;
     if ((!org || org.id !== proj.organization_id) && proj.organization_id) {
-      org = await getOrganization(proj.organization_id, async () => token);
+      org = await getOrganization(token, proj.organization_id);
     }
     if (!org && proj.organization_id) throw new Error("Parent organization not found.");
     setParentOrg(org);
@@ -96,12 +95,14 @@ export default function EditProjectModulePage() {
     // 4. Fetch Module's Repository Name
     if (fetchedModule.repository_id) {
         try {
-            const repoResult = await getRepository(fetchedModule.repository_id, async () => token);
-            setModuleRepo(repoResult.repository);
+            const repoResult = await getRepository(token, fetchedModule.repository_id);
+            setModuleRepo(repoResult.repository || null);
         } catch (repoErr) {
             console.warn("Could not fetch repository details for module:", repoErr);
             setModuleRepo(null);
         }
+    } else {
+      setModuleRepo(null);
     }
   }, [moduleId, projectId, contextProject, setContextSelectedProject, contextOrg, setContextSelectedOrg]);
 
@@ -151,7 +152,7 @@ export default function EditProjectModulePage() {
     try {
       const token = await getClientToken();
       const updatePayload: UpdateModuleInput = { module_config: { config_file_path: editConfigFilePath } };
-      const updatedModule = await updateModule(currentModule.id, updatePayload, async () => token);
+      const updatedModule = await updateModule(token, currentModule.id, updatePayload);
       if (updatedModule) {
         await fetchPageData(token); // Re-fetch and set all module data
         toast({ title: "Configuration Loaded", description: "Module configuration loaded and saved." });
@@ -178,7 +179,7 @@ export default function EditProjectModulePage() {
     setIsSavingConfig(true); setError(null);
     try {
       const token = await getClientToken();
-      const updatedModule = await updateModule(currentModule.id, updateData, async () => token);
+      const updatedModule = await updateModule(token, currentModule.id, updateData);
       if (updatedModule) {
         await fetchPageData(token);
         toast({ title: "Configuration Saved", description: "Module configuration updated." });

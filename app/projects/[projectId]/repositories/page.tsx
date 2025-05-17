@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/contexts/organization-context';
-import { type Project, type Repository, getProject, getRepositories, getOrganization, type Organization, getProjects } from '@/lib/api-core'; 
+import { type Project, type Repository, getProject, getRepositories, getOrganization as apiGetOrganization, type Organization, getProjects } from '@/lib/api-core'; 
 import { RepositoriesOverview } from "@/components/repositories/repositories-overview";
 
 export default function ProjectRepositoriesPage() {
@@ -61,8 +61,8 @@ export default function ProjectRepositoriesPage() {
         const token = await getClientToken();
         const numericProjectId = Number(projectId);
 
-        // Fetch current project details
-        const projData = await getProject(numericProjectId, async () => token);
+        // Corrected: token first, then projectId
+        const projData = await getProject(token, numericProjectId); 
         setProject(projData);
         setContextSelectedProject(projData); // Update context
 
@@ -72,11 +72,16 @@ export default function ProjectRepositoriesPage() {
           return;
         }
 
-        // Fetch repositories for the current project
-        const projectRepos = await getRepositories({ project_id: numericProjectId }, async () => token);
+        // Fetch parent organization
+        const orgData = await apiGetOrganization(token, projData.organization_id);
+        setParentOrganization(orgData);
+        setContextSelectedOrg(orgData); // Update context for parent org
 
-        // Fetch repositories for the parent organization
-        const orgRepos = await getRepositories({ organization_id: projData.organization_id }, async () => token);
+        // Corrected: token first, then params object
+        const projectRepos = await getRepositories(token, { projectId: numericProjectId }); 
+
+        // Corrected: token first, then params object
+        const orgRepos = await getRepositories(token, { organizationId: projData.organization_id }); 
 
         // Combine and de-duplicate repositories
         const combinedReposMap = new Map<number, Repository>();
@@ -85,8 +90,8 @@ export default function ProjectRepositoriesPage() {
         
         setRepositories(Array.from(combinedReposMap.values()));
 
-        // Fetch all projects in the parent organization (for scope display in RepositoriesOverview)
-        const parentOrgProjects = await getProjects(projData.organization_id, async () => token);
+        // Corrected: token first, then orgId
+        const parentOrgProjects = await getProjects(token, projData.organization_id); 
         setProjectsInParentOrg(parentOrgProjects);
 
       } catch (err: any) {
@@ -99,7 +104,7 @@ export default function ProjectRepositoriesPage() {
     }
     if (sessionStatus === "unauthenticated") router.push("/login");
     else fetchData();
-  }, [projectId, sessionStatus, getClientToken, router, setContextSelectedProject]); // Removed contextProject from deps as we fetch and set it
+  }, [projectId, sessionStatus, getClientToken, router, setContextSelectedProject, setContextSelectedOrg]); // Added setContextSelectedOrg
 
   if (loading || sessionStatus === "loading") {
     return (

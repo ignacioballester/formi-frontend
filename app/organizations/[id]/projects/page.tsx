@@ -62,13 +62,14 @@ export default function OrganizationProjectsPage() {
       
       setLoading(true)
       try {
+        const token = await getClientToken();
         const orgId = Number.parseInt(organizationId as string)
 
-        const orgData = await getOrganization(orgId, getClientToken)
+        const orgData = await getOrganization(token, orgId)
         setOrganization(orgData)
         setSelectedOrganization(orgData)
 
-        const projectsData = await getProjects(orgId, getClientToken)
+        const projectsData = await getProjects(token, orgId)
         setProjects(projectsData)
 
       } catch (error: any) {
@@ -96,7 +97,7 @@ export default function OrganizationProjectsPage() {
     }
 
     fetchData()
-  }, [organizationId, setSelectedOrganization, router, sessionStatus, session?.accessToken])
+  }, [organizationId, setSelectedOrganization, router, sessionStatus, session?.accessToken, getClientToken])
 
   const handleProjectSelect = (project: Project) => {
     router.push(`/projects/${project.id}`)

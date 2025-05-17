@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { isUserAuthorized } from '@/lib/api-iam'; // Assuming lib/iam.ts is in '@/lib'
 
@@ -14,7 +14,7 @@ interface UsePermissionResult {
   hasPermission: boolean | null;
   isLoading: boolean;
   error: string | null;
-  refetch: () => void; // Allow manual refetching
+  refetch: () => Promise<void>; // Changed to async to allow await for update
 }
 
 export function usePermission({
@@ -22,64 +22,63 @@ export function usePermission({
   scopes,
   skip = false,
 }: UsePermissionOptions): UsePermissionResult {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(!skip && status !== "authenticated"); // Start loading if not skipping and not already authenticated
   const [error, setError] = useState<string | null>(null);
-  const [triggerFetch, setTriggerFetch] = useState(0); // To manually trigger refetch
+  const [fetchCount, setFetchCount] = useState(0); // Renamed from triggerFetch for clarity
 
-  const refetch = () => {
-    setTriggerFetch(prev => prev + 1);
-  };
-
-  useEffect(() => {
-    async function checkAccess() {
-      if (skip) {
-        setIsLoading(false);
-        setHasPermission(null); // Or a default based on your needs for skipped checks
-        return;
-      }
-
-      if (status === 'loading') {
-        setIsLoading(true);
-        return;
-      }
-
-      if (status === 'unauthenticated') {
-        setHasPermission(false);
-        setIsLoading(false);
-        setError("User is unauthenticated.");
-        return;
-      }
-      
-      if (!session?.accessToken) {
-        setHasPermission(false);
-        setIsLoading(false);
-        setError("Access token not available.");
-        return;
-      }
-      
-      // Clear previous error before new fetch
+  const checkAccess = useCallback(async (isManualRefetch: boolean) => {
+    if (skip && !isManualRefetch) {
+      setIsLoading(false);
+      setHasPermission(null);
       setError(null);
-      setIsLoading(true);
-      try {
-        const authorized = await isUserAuthorized(
-          resourceName,
-          scopes,
-          session.accessToken
-        );
-        setHasPermission(authorized);
-      } catch (e: any) {
-        console.error("Error in usePermission checkAccess:", e);
-        setHasPermission(false); // Default to no access on error
-        setError(e.message || "Failed to check permission.");
-      } finally {
-        setIsLoading(false);
-      }
+      return;
     }
 
-    checkAccess();
-  }, [session, status, resourceName, scopes, skip, triggerFetch]); // JSON.stringify(scopes) if scopes array identity can change frequently
+    if (status === 'loading' && !isManualRefetch && fetchCount === 0) {
+        setIsLoading(true);
+        return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (isManualRefetch) {
+        await update();
+      }
+
+      if (status !== 'authenticated' || !session?.accessToken) {
+        setHasPermission(false);
+        setError(status === 'unauthenticated' ? "User is unauthenticated." : "Access token not available or session invalid after refresh.");
+        setIsLoading(false);
+        return;
+      }
+      
+      const authorized = await isUserAuthorized(
+        session.accessToken,
+        resourceName,
+        scopes
+      );
+      setHasPermission(authorized);
+    } catch (e: any) {
+      console.error("Error in usePermission checkAccess:", e);
+      setHasPermission(false);
+      setError(e.message || "Failed to check permission.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [skip, status, session, resourceName, scopes, fetchCount]);
+
+  const refetch = useCallback(async () => {
+    setFetchCount(prev => prev + 1);
+    await checkAccess(true);
+  }, [checkAccess]);
+
+  useEffect(() => {
+    checkAccess(false);
+  }, [checkAccess]);
 
   return { hasPermission, isLoading, error, refetch };
 } 

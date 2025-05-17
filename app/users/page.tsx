@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getIamUsers, type User as IAMUser } from "@/lib/api-iam"
 
 export default function UsersPage() {
-  const { data: session, status: sessionStatus } = useSession()
+  const { data: session, status: sessionStatus, update } = useSession()
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<IAMUser[]>([])
@@ -31,37 +31,40 @@ export default function UsersPage() {
 
   useEffect(() => {
     async function fetchUsers() {
-      if (sessionStatus === "loading" || !session?.accessToken) {
-        if (sessionStatus !== "loading") {
-          setLoading(false)
-          setError("Authentication token not available.")
-        }
-        return
-      }
-
+      if (sessionStatus === "loading") return;
+      setLoading(true);
       try {
-        setLoading(true)
-        setError(null)
-        const usersData = await getIamUsers()
-        setUsers(usersData)
+        // await update(); // Removed proactive token refresh
+        // Ensure session and accessToken are valid 
+        if (sessionStatus !== "authenticated" || !session?.accessToken) {
+            setError("User not authenticated or session token unavailable.");
+            setUsers([]);
+            setLoading(false);
+            return;
+        }
+        setError(null);
+        const usersData = await getIamUsers(session.accessToken); // Pass token
+        setUsers(usersData);
       } catch (err: any) {
-        console.error("Error fetching users:", err)
-        setError(err.message || "Failed to fetch users.")
-        setUsers([])
+        console.error("Error fetching users:", err);
+        setError(err.message || "Failed to fetch users.");
+        setUsers([]);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    if (sessionStatus === "authenticated" && session?.accessToken) {
-      fetchUsers()
+    if (sessionStatus === "authenticated") {
+      fetchUsers();
     } else if (sessionStatus === "unauthenticated") {
-      setLoading(false)
-      setError("User is not authenticated.")
-    } else {
-      setLoading(true)
+      setLoading(false);
+      setError("User is not authenticated.");
+      setUsers([]);
+    } else { // sessionStatus is "loading"
+      setLoading(true); 
     }
-  }, [session, sessionStatus])
+  }, [sessionStatus, session]); // Added session as a dependency, removed update.
+  // It's important that if session.accessToken is used, session itself is a dependency.
 
   const filteredUsers = users.filter(
     (user) =>

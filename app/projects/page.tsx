@@ -70,7 +70,7 @@ export default function ProjectsPage() {
       setLoadingOrganizations(true);
       try {
         const token = await getClientToken();
-        const orgs = await getOrganizations(async () => token);
+        const orgs = await getOrganizations(token);
         setAllOrganizations(orgs);
       } catch (error: any) {
         console.error("Error fetching organizations:", error);
@@ -92,7 +92,9 @@ export default function ProjectsPage() {
       setLoadingProjects(true);
       try {
         const token = await getClientToken();
-        const projectPromises = Array.from(selectedOrgIds).map(orgId => getProjects(orgId, async () => token));
+        const projectPromises = Array.from(selectedOrgIds).map(orgId => 
+          getProjects(token, orgId)
+        );
         const projectsByOrg = await Promise.all(projectPromises);
         const flattenedProjects = projectsByOrg.flat();
         setProjects(flattenedProjects);

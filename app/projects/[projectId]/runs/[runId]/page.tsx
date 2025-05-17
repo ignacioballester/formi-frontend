@@ -17,18 +17,22 @@ import { RunLogsView } from '@/components/runs/RunLogsView'; // Corrected import
 import { useOrganization } from '@/contexts/organization-context';
 import {
   getProject,
-  getRunnerRunById, // Fetches details for a specific run
-  getRunLogs,       // Fetches logs for a specific run
   type Project,
-  type RunnerRun,
-  type RunnerRunStatus
 } from '@/lib/api-core';
+import {
+  getRunnerRunById, 
+  getRunLogs,       
+  type Run as RunnerRun // Import Run as RunnerRun from api-runner
+  // RunnerRunStatus will be inferred from RunnerRun.status
+} from '@/lib/api-runner';
 
-// Helper to get badge variant from RunOverview (or duplicate here if preferred)
-const getStatusVariant = (status?: RunnerRunStatus): "default" | "secondary" | "destructive" | "outline" => {
+// Helper to get badge variant
+// The type for status will now be RunnerRun['status'] which is the type of the status property on RunnerRun
+const getStatusVariant = (status?: RunnerRun['status']): "default" | "secondary" | "destructive" | "outline" => {
   if (!status) return "outline";
   switch (status) {
-    case "completed": return "default";
+    // Ensure these cases match the possible string values of RunnerRun['status']
+    case "completed": return "default"; // Example, adjust if status strings are different
     case "failed": return "destructive";
     case "running": return "secondary";
     case "pending": return "outline";
@@ -66,7 +70,7 @@ export default function RunDetailPage() {
     try {
       const token = await getClientToken();
       const numericRunId = Number(id);
-      const details = await getRunnerRunById(numericRunId, async () => token);
+      const details = await getRunnerRunById(token, numericRunId);
       setRunDetails(details);
     } catch (err: any) {
       console.error("Error fetching run details:", err);
@@ -82,7 +86,7 @@ export default function RunDetailPage() {
     try {
       const token = await getClientToken();
       const numericRunId = Number(id);
-      const logs = await getRunLogs(numericRunId, async () => token);
+      const logs = await getRunLogs(token, numericRunId);
       setRunLogs(logs);
     } catch (err: any) {
       console.error("Error fetching run logs:", err);
@@ -96,7 +100,7 @@ export default function RunDetailPage() {
   useEffect(() => {
     if (projectId && sessionStatus === 'authenticated' && (!contextProject || contextProject.id.toString() !== projectId)) {
       getClientToken().then(token => {
-        getProject(Number(projectId), async () => token)
+        getProject(token, Number(projectId))
           .then(proj => {
             setCurrentProject(proj);
             setContextSelectedProject(proj); // Update context
@@ -198,9 +202,9 @@ export default function RunDetailPage() {
               <div><strong>Run ID:</strong> {runDetails.id}</div>
               <div><strong>Deployment ID:</strong> {runDetails.deployment_id}</div>
               <div><strong>Status:</strong> <Badge variant={getStatusVariant(runDetails.status)}>{runDetails.status}</Badge></div>
-              <div><strong>Timestamp:</strong> {format(new Date(runDetails.timestamp), 'PPpp')}</div>
-              <div className="md:col-span-1"><strong>Run By:</strong> {runDetails.properties.run_by}</div>
-              <div className="md:col-span-1"><strong>Terraform Command:</strong> <code className="bg-muted px-1 rounded">{runDetails.properties.terraform_command}</code></div>
+              <div><strong>Timestamp:</strong> {runDetails.timestamp ? format(new Date(runDetails.timestamp), 'PPpp') : 'N/A'}</div>
+              <div className="md:col-span-1"><strong>Run By:</strong> {runDetails.properties?.run_by || 'N/A'}</div>
+              <div className="md:col-span-1"><strong>Terraform Command:</strong> <code className="bg-muted px-1 rounded">{runDetails.properties?.terraform_command || 'N/A'}</code></div>
               {runDetails.status_details?.error_message && (
                 <div className="md:col-span-2 text-destructive">
                   <strong>Error Message:</strong> {runDetails.status_details.error_message}
